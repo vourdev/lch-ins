@@ -27,9 +27,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { kycMissing, policyStatus } from "@/lib/data"
+import { kycMissing, policyStatus, type Client } from "@/lib/data"
 import { dateShort, money } from "@/lib/format"
-import { useCollection, useRecord } from "@/lib/store"
+import { store, useCollection, useRecord } from "@/lib/store"
 
 function Item({ label, value }: { label: string; value?: React.ReactNode }) {
   return (
@@ -40,9 +40,22 @@ function Item({ label, value }: { label: string; value?: React.ReactNode }) {
   )
 }
 
-export function ClientDetail({ id }: { id: string }) {
+interface ClientDetailProps {
+  id: string
+  initialClient?: Client | null
+}
+
+export function ClientDetail({ id, initialClient }: ClientDetailProps) {
   const today = useToday()
-  const client = useRecord("clients", id)
+
+  React.useEffect(() => {
+    if (initialClient) {
+      store.upsert("clients", initialClient)
+    }
+  }, [initialClient])
+
+  const storedClient = useRecord("clients", id)
+  const client = storedClient ?? initialClient ?? null
   const slips = useCollection("slips")
   const policies = useCollection("policies")
   const claims = useCollection("claims")

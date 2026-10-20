@@ -21,6 +21,7 @@ import { join } from "node:path"
 import { hashPassword } from "better-auth/crypto"
 
 import type { RoleCode } from "../lib/access"
+import { CLIENTS } from "../lib/data/clients"
 import { Prisma } from "../lib/generated/prisma/client"
 import { prisma } from "../lib/prisma"
 
@@ -992,6 +993,173 @@ async function seedUsers() {
   return { created, updated, password: created ? password : null }
 }
 
+/**
+ * Pembenihan data klien awal (12 klien mock LCH) ke tabel clients,
+ * client_addresses, dan client_documents di PostgreSQL.
+ */
+async function seedClients() {
+  const cache = await prisma.lookupValue.findMany({
+    where: {
+      lookupType: {
+        in: [
+          "client_type",
+          "client_status",
+          "id_type",
+          "income_source",
+          "insurance_purpose",
+          "address_type",
+          "client_document_type",
+        ],
+      },
+    },
+    select: { id: true, lookupType: true, code: true, name: true },
+  })
+
+  const lookupByName = new Map<string, string>()
+  const lookupByCode = new Map<string, string>()
+  for (const l of cache) {
+    lookupByName.set(`${l.lookupType}:${l.name.toLowerCase()}`, l.id)
+    lookupByCode.set(`${l.lookupType}:${l.code.toLowerCase()}`, l.id)
+  }
+
+  const cobs = await prisma.classOfBusiness.findMany({
+    select: { id: true, code: true, name: true },
+  })
+  const cobMap = new Map<string, string>()
+  for (const c of cobs) {
+    cobMap.set(c.name.toLowerCase(), c.id)
+    cobMap.set(c.code.toLowerCase(), c.id)
+  }
+
+  const user = await prisma.user.findFirst({ select: { id: true } })
+  const defaultUserId = user?.id
+
+  let created = 0
+  let updated = 0
+
+  for (const item of CLIENTS) {
+    const clientTypeId =
+      lookupByName.get(`client_type:${item.clientType.toLowerCase()}`) ||
+      lookupByCode.get("client_type:corporate")!
+    const statusId =
+      lookupByName.get(`client_status:${item.status.toLowerCase()}`) ||
+      lookupByCode.get("client_status:active")!
+    const idTypeId = item.idType
+      ? lookupByName.get(`id_type:${item.idType.toLowerCase()}`) ||
+        lookupByCode.get(`id_type:${item.idType.toLowerCase()}`)
+      : null
+    const incomeSourceId = item.incomeSource
+      ? lookupByName.get(`income_source:${item.incomeSource.toLowerCase()}`)
+      : null
+    const insurancePurposeId = item.insurancePurpose
+      ? lookupByName.get(`insurance_purpose:${item.insurancePurpose.toLowerCase()}`)
+      : null
+    const cobId = item.cob
+      ? cobMap.get(item.cob.toLowerCase()) ?? cobs[0]?.id
+      : null
+
+    const existing = await prisma.client.findFirst({
+      where: { name: { equals: item.name.trim(), mode: "insensitive" } },
+    })
+
+    let clientId: string
+
+    if (existing) {
+      clientId = existing.id
+      await prisma.client.update({
+        where: { id: existing.id },
+        data: {
+          clientTypeId,
+          npwp: item.npwp || null,
+          idTypeId,
+          idNumber: item.idNumber || null,
+          birthPlace: item.birthPlace || null,
+          birthDate: item.birthDate ? new Date(item.birthDate) : null,
+          contactPerson: item.contactPerson || null,
+          contactPersonIdNumber: item.contactPersonIdNumber || null,
+          email: item.email || null,
+          phone: item.phone || null,
+          incomeSourceId,
+          insurancePurposeId,
+          insurancePurposeNote: item.insurancePurposeNote || null,
+          kycDate: item.kycDate ? new Date(item.kycDate) : null,
+          cobId,
+          statusId,
+          notes: item.notes || null,
+        },
+      })
+      updated++
+    } else {
+      const rec = await prisma.client.create({
+        data: {
+          clientTypeId,
+          name: item.name.trim(),
+          npwp: item.npwp || null,
+          idTypeId,
+          idNumber: item.idNumber || null,
+          birthPlace: item.birthPlace || null,
+          birthDate: item.birthDate ? new Date(item.birthDate) : null,
+          contactPerson: item.contactPerson || null,
+          contactPersonIdNumber: item.contactPersonIdNumber || null,
+          email: item.email || null,
+          phone: item.phone || null,
+          incomeSourceId,
+          insurancePurposeId,
+          insurancePurposeNote: item.insurancePurposeNote || null,
+          kycDate: item.kycDate ? new Date(item.kycDate) : null,
+          cobId,
+          statusId,
+          notes: item.notes || null,
+        },
+      })
+      clientId = rec.id
+      created++
+    }
+
+    if (item.addresses && item.addresses.length > 0) {
+      await prisma.clientAddress.deleteMany({ where: { clientId } })
+      for (const [idx, addr] of item.addresses.entries()) {
+        const addressTypeId =
+          lookupByName.get(`address_type:${addr.label.toLowerCase()}`) ||
+          lookupByCode.get("address_type:correspondence")!
+        await prisma.clientAddress.create({
+          data: {
+            clientId,
+            addressTypeId,
+            address: addr.value,
+            isPrimary: addr.isPrimary ?? idx === 0,
+          },
+        })
+      }
+    }
+
+    if (defaultUserId && item.documents && item.documents.length > 0) {
+      for (const doc of item.documents) {
+        const docTypeId =
+          lookupByName.get(`client_document_type:${doc.type.toLowerCase()}`) ||
+          lookupByCode.get("client_document_type:other")!
+        const existingDoc = await prisma.clientDocument.findFirst({
+          where: { clientId, fileName: doc.fileName },
+        })
+        if (!existingDoc) {
+          await prisma.clientDocument.create({
+            data: {
+              clientId,
+              documentTypeId: docTypeId,
+              fileName: doc.fileName,
+              filePath: doc.url || `/mock/docs/${doc.fileName}`,
+              uploadedBy: defaultUserId,
+              uploadedAt: doc.uploadedAt ? new Date(doc.uploadedAt) : new Date(),
+            },
+          })
+        }
+      }
+    }
+  }
+
+  return { created, updated, total: CLIENTS.length }
+}
+
 // ---------------------------------------------------------------------------
 
 /**
@@ -999,7 +1167,14 @@ async function seedUsers() {
  * Tanpa argumen semua bagian dijalankan. Berguna untuk melanjutkan seed ke
  * database cloud tanpa mengulang bagian yang sudah lengkap.
  */
-const SECTIONS = ["system", "cob", "occupations", "tariffs", "clauses"] as const
+const SECTIONS = [
+  "system",
+  "cob",
+  "occupations",
+  "tariffs",
+  "clauses",
+  "clients",
+] as const
 
 let seededUsers: {
   created: number
@@ -1066,6 +1241,13 @@ async function main() {
   if (clauses) {
     console.log(
       `  clauses              ${clauses.n} (${clauses.created} baru, sisanya sudah ada)`
+    )
+  }
+
+  if (want("clients")) {
+    const clients = await seedClients()
+    console.log(
+      `  clients              ${clients.total} (${clients.created} baru, ${clients.updated} diperbarui)`
     )
   }
 

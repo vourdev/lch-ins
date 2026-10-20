@@ -6,6 +6,10 @@ import { Ban, Eye, Pencil, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 
 import {
+  deleteClientAction,
+  toggleClientStatusAction,
+} from "@/app/(app)/marketing/actions"
+import {
   ACTION_COL_CLASS,
   RowActions,
   type RowAction,
@@ -50,7 +54,20 @@ const STATUS_ITEMS = [
   ...CLIENT_STATUSES.map((s) => ({ label: s, value: s })),
 ]
 
-export function ClientTable({ onEdit }: { onEdit: (client: Client) => void }) {
+interface ClientTableProps {
+  onEdit: (client: Client) => void
+  initialClients?: Client[]
+}
+
+export function ClientTable({ onEdit, initialClients }: ClientTableProps) {
+  React.useEffect(() => {
+    if (initialClients && initialClients.length > 0) {
+      for (const c of initialClients) {
+        store.upsert("clients", c)
+      }
+    }
+  }, [initialClients])
+
   const clients = useCollection("clients")
   const slips = useCollection("slips")
   const policies = useCollection("policies")
@@ -83,9 +100,11 @@ export function ClientTable({ onEdit }: { onEdit: (client: Client) => void }) {
   function actionsFor(c: Client): RowAction[] {
     // Klien yang sudah dipakai dokumen tidak dihapus, cukup dinonaktifkan (ERD).
     const used =
+      Boolean((c as any).isUsedInDocuments) ||
       slips.some((s) => s.clientId === c.id) ||
       policies.some((p) => p.clientId === c.id) ||
       sppa.some((s) => s.clientId === c.id)
+
     const actions: RowAction[] = [
       {
         label: "Lihat detail",
@@ -94,6 +113,7 @@ export function ClientTable({ onEdit }: { onEdit: (client: Client) => void }) {
       },
       { label: "Edit klien", icon: Pencil, onSelect: () => onEdit(c) },
     ]
+
     if (used) {
       actions.push({
         label: c.status === "Inactive" ? "Sudah nonaktif" : "Nonaktifkan",
@@ -106,7 +126,12 @@ export function ClientTable({ onEdit }: { onEdit: (client: Client) => void }) {
             "Klien ini sudah dipakai di SPPA, slip, atau polis, jadi tidak dihapus. Statusnya diubah menjadi Inactive dan tetap tampil di dokumen lama.",
           actionLabel: "Nonaktifkan",
         },
-        onSelect: () => {
+        onSelect: async () => {
+          const res = await toggleClientStatusAction(c.id, "Inactive")
+          if (!res.ok) {
+            toast.error(res.error || "Gagal menonaktifkan klien.")
+            return
+          }
           store.update("clients", c.id, { status: "Inactive" })
           toast.success("Klien dinonaktifkan", { description: c.name })
         },
@@ -119,10 +144,15 @@ export function ClientTable({ onEdit }: { onEdit: (client: Client) => void }) {
         confirm: {
           title: `Hapus ${c.name}?`,
           description:
-            "Data klien beserta alamat dan berkas KYC-nya dihapus permanen.",
+            "Data klien beserta alamat dan berkas KYC-nya dihapus permanen dari database.",
           actionLabel: "Hapus",
         },
-        onSelect: () => {
+        onSelect: async () => {
+          const res = await deleteClientAction(c.id)
+          if (!res.ok) {
+            toast.error(res.error || "Gagal menghapus klien.")
+            return
+          }
           store.remove("clients", c.id)
           toast.success("Klien dihapus", { description: c.name })
         },
@@ -159,18 +189,14 @@ export function ClientTable({ onEdit }: { onEdit: (client: Client) => void }) {
         <SearchInput
           value={query}
           onValueChange={setQuery}
-          placeholder="Cari nama, kontak, email, NPWP…"
+          placeholder="Cari nama klien, kontak, email, nomor telepon, NPWP…"
         />
         <Select
           items={COB_ITEMS}
           value={cob}
           onValueChange={(v) => setCob(v as string)}
         >
-          <SelectTrigger
-            size="sm"
-            className="w-42"
-            aria-label="Filter COB"
-          >
+          <SelectTrigger size="sm" className="w-42">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -188,11 +214,7 @@ export function ClientTable({ onEdit }: { onEdit: (client: Client) => void }) {
           value={status}
           onValueChange={(v) => setStatus(v as string)}
         >
-          <SelectTrigger
-            size="sm"
-            className="w-37.5"
-            aria-label="Filter status"
-          >
+          <SelectTrigger size="sm" className="w-37.5">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -209,69 +231,103 @@ export function ClientTable({ onEdit }: { onEdit: (client: Client) => void }) {
       </div>
 
       <Card className="gap-0 overflow-hidden py-0">
-        <Table className="min-w-[760px]">
+        <Table className="min-w-210">
           <TableHeader>
             <TableRow className="hover:bg-transparent">
               <TableHead className={ACTION_COL_CLASS}>
                 <span className="sr-only">Aksi</span>
               </TableHead>
               <TableHead>Nama Klien</TableHead>
-              <TableHead>Kontak</TableHead>
-              <TableHead>Telepon</TableHead>
-              <TableHead>NPWP</TableHead>
-              <TableHead>COB</TableHead>
-              <TableHead>KYC</TableHead>
-              <TableHead className="pr-4">Status</TableHead>
+              <TableHead>Kontak &amp; PIC</TableHead>
+              <TableHead>COB Utama</TableHead>
+              <TableHead>Kelengkapan KYC</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="pr-4">Alamat</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {rows.length === 0 ? (
               <TableEmpty
-                colSpan={8}
-                message="Tidak ada klien yang cocok dengan filter"
+                colSpan={7}
+                message="Tidak ada data klien yang cocok"
               />
             ) : (
               paginatedRows.map((c) => {
                 const missing = kycMissing(c)
+                const primaryAddress =
+                  c.addresses.find((a) => a.isPrimary) ?? c.addresses[0]
                 return (
                   <TableRow key={c.id}>
                     <TableCell className={ACTION_COL_CLASS}>
                       <RowActions actions={actionsFor(c)} />
                     </TableCell>
-                    <TableCell className="max-w-65">
-                      <Link
-                        href={`/marketing/clients/${c.id}`}
-                        className="block truncate font-medium hover:text-primary"
-                      >
-                        {c.name}
-                      </Link>
-                      <p className="truncate text-xs text-muted-foreground">
-                        {c.clientType} · {maskEmail(c.email)}
+                    <TableCell className="max-w-60">
+                      <div className="flex items-center gap-1.5">
+                        <Link
+                          href={`/marketing/clients/${c.id}`}
+                          className="truncate font-medium hover:underline text-foreground"
+                        >
+                          {c.name}
+                        </Link>
+                        <span className="shrink-0 text-[11px] text-muted-foreground">
+                          ({c.clientType})
+                        </span>
+                      </div>
+                      {c.npwp ? (
+                        <p className="tabular truncate text-xs text-muted-foreground">
+                          NPWP {c.npwp}
+                        </p>
+                      ) : null}
+                    </TableCell>
+                    <TableCell className="max-w-55">
+                      <p className="truncate font-medium">{c.contactPerson}</p>
+                      <p className="tabular truncate text-xs text-muted-foreground">
+                        {[
+                          c.phone ? maskMiddle(c.phone) : undefined,
+                          c.email ? maskEmail(c.email) : undefined,
+                        ]
+                          .filter(Boolean)
+                          .join(" • ") || "—"}
                       </p>
                     </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {c.contactPerson || "—"}
+                    <TableCell className="max-w-40">
+                      <span className="text-xs font-medium">{c.cob}</span>
                     </TableCell>
-                    <TableCell className="tabular text-muted-foreground">
-                      {maskMiddle(c.phone, 4, 3)}
-                    </TableCell>
-                    <TableCell className="tabular text-xs text-muted-foreground">
-                      {maskMiddle(c.npwp, 2, 3)}
-                    </TableCell>
-                    <TableCell>{c.cob}</TableCell>
-                    <TableCell>
-                      {missing.length ? (
-                        <ToneBadge tone="warning" className="cursor-help">
-                          <span title={`Kurang: ${missing.join(", ")}`}>
-                            Kurang {missing.length}
-                          </span>
-                        </ToneBadge>
-                      ) : (
+                    <TableCell className="max-w-50">
+                      {missing.length === 0 ? (
                         <ToneBadge tone="success">Lengkap</ToneBadge>
+                      ) : (
+                        <div className="flex flex-col gap-0.5">
+                          <ToneBadge tone="warning">
+                            Kurang {missing.length} data
+                          </ToneBadge>
+                          <span
+                            className="truncate text-[11px] text-muted-foreground"
+                            title={missing.join(", ")}
+                          >
+                            {missing.join(", ")}
+                          </span>
+                        </div>
                       )}
                     </TableCell>
-                    <TableCell className="pr-4">
+                    <TableCell>
                       <StatusBadge status={c.status} />
+                    </TableCell>
+                    <TableCell className="max-w-60 pr-4">
+                      {primaryAddress ? (
+                        <div className="flex flex-col">
+                          <span className="truncate text-xs">
+                            {primaryAddress.value}
+                          </span>
+                          {c.addresses.length > 1 ? (
+                            <span className="text-[11px] text-muted-foreground">
+                              +{c.addresses.length - 1} alamat lain
+                            </span>
+                          ) : null}
+                        </div>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
                     </TableCell>
                   </TableRow>
                 )
@@ -289,10 +345,6 @@ export function ClientTable({ onEdit }: { onEdit: (client: Client) => void }) {
         onPageSizeChange={setPageSize}
         itemName="klien"
       />
-
-      <p className="text-xs text-muted-foreground">
-        Telepon dan NPWP disamarkan, data lengkap ada di halaman detail.
-      </p>
     </div>
   )
 }

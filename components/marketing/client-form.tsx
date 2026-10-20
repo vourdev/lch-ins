@@ -5,6 +5,10 @@ import { FileUp, Plus, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import * as z from "zod"
 
+import {
+  createClientAction,
+  updateClientAction,
+} from "@/app/(app)/marketing/actions"
 import { FormDrawer } from "@/components/shared/form-drawer"
 import { SelectInput, TextField } from "@/components/shared/form-fields"
 import { Button } from "@/components/ui/button"
@@ -175,7 +179,7 @@ export function ClientForm({
     })
   }
 
-  function submit() {
+  async function submit() {
     const result = validate(schema, draft)
     const errs = { ...result.errors }
     const duplicate = clients.find(
@@ -190,26 +194,71 @@ export function ClientForm({
     const addresses = draft.addresses.some((a) => a.isPrimary)
       ? draft.addresses
       : draft.addresses.map((a, i) => ({ ...a, isPrimary: i === 0 }))
-    const record: Client = {
-      ...draft,
-      id: draft.id ?? newId("c"),
+
+    const payload = {
+      clientType: draft.clientType,
       name: draft.name.trim(),
-      // Clear fields that are not applicable to the client type.
-      ...(corporate
-        ? { idNumber: "", birthPlace: "", birthDate: "", incomeSource: "" }
-        : {
-            contactPersonIdNumber: "",
-            contactPerson: draft.contactPerson || draft.name,
-          }),
-      addresses,
-      documents: draft.documents.filter((d) => d.fileName),
+      npwp: draft.npwp || null,
+      idType: corporate ? null : draft.idType || null,
+      idNumber: corporate ? null : draft.idNumber || null,
+      birthPlace: corporate ? null : draft.birthPlace || null,
+      birthDate: !corporate && draft.birthDate ? draft.birthDate : null,
+      contactPerson: corporate
+        ? draft.contactPerson || null
+        : draft.contactPerson || draft.name.trim(),
+      contactPersonIdNumber: corporate
+        ? draft.contactPersonIdNumber || null
+        : null,
+      email: draft.email || null,
+      phone: draft.phone || null,
+      incomeSource: corporate ? null : draft.incomeSource || null,
+      insurancePurpose: draft.insurancePurpose || null,
+      insurancePurposeNote: draft.insurancePurposeNote || null,
+      kycDate: draft.kycDate || null,
+      cob: draft.cob,
+      status: draft.status,
+      notes: draft.notes || null,
+      addresses: addresses.map((a) => ({
+        id: a.id,
+        label: a.label,
+        value: a.value,
+        isPrimary: a.isPrimary,
+      })),
+      documents: draft.documents
+        .filter((d) => d.fileName)
+        .map((d) => ({
+          id: d.id,
+          type: d.type,
+          fileName: d.fileName,
+          url: d.url,
+        })),
     }
-    store.upsert("clients", record)
-    toast.success(draft.id ? "Data klien diperbarui" : "Klien tersimpan", {
-      description: record.name,
-    })
-    onSaved?.(record)
-    onOpenChange(false)
+
+    if (draft.id) {
+      const res = await updateClientAction(draft.id, payload)
+      if (!res.ok || !res.data) {
+        toast.error(res.error || "Gagal memperbarui data klien")
+        return false
+      }
+      const record = res.data
+      store.upsert("clients", record)
+      toast.success("Data klien diperbarui", { description: record.name })
+      onSaved?.(record)
+      onOpenChange(false)
+      return true
+    } else {
+      const res = await createClientAction(payload)
+      if (!res.ok || !res.data) {
+        toast.error(res.error || "Gagal menambahkan klien baru")
+        return false
+      }
+      const record = res.data
+      store.upsert("clients", record)
+      toast.success("Klien tersimpan", { description: record.name })
+      onSaved?.(record)
+      onOpenChange(false)
+      return true
+    }
   }
 
   return (
@@ -382,6 +431,7 @@ export function ClientForm({
               required
               value={draft.insurancePurposeNote ?? ""}
               onChange={(v) => set({ insurancePurposeNote: v })}
+              placeholder="Contoh: Pembiayaan sindikasi, agunan kredit, dsb."
               error={errors.insurancePurposeNote}
             />
           ) : null}

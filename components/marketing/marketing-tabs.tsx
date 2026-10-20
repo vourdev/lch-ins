@@ -11,9 +11,14 @@ import { SppaTable } from "@/components/marketing/sppa-table"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import type { Client } from "@/lib/data"
+import type { ClientRecord } from "@/lib/server/clients"
 import { useCollection } from "@/lib/store"
 
-export function MarketingTabs() {
+interface MarketingTabsProps {
+  initialClients?: ClientRecord[]
+}
+
+export function MarketingTabs({ initialClients }: MarketingTabsProps) {
   const sppa = useCollection("sppa")
   const [form, setForm] = React.useState<{
     key: number
@@ -45,6 +50,7 @@ export function MarketingTabs() {
         </TabsList>
         <TabsContent value="clients">
           <ClientTable
+            initialClients={initialClients}
             onEdit={(client) =>
               setForm((prev) => ({ key: (prev?.key ?? 0) + 1, client }))
             }

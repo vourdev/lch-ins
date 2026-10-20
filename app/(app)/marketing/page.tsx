@@ -1,12 +1,19 @@
+import type { Metadata } from "next"
+
 import { PageShell } from "@/components/layout/page-header"
 import { MarketingTabs } from "@/components/marketing/marketing-tabs"
+import { listClients } from "@/lib/server/clients"
+import { requireAccess } from "@/lib/server/session"
 
-export const metadata = { title: "Marketing — LCH Insurance Brokers" }
+export const metadata: Metadata = { title: "Marketing — LCH Insurance Brokers" }
 
-export default function MarketingPage() {
+export default async function MarketingPage() {
+  await requireAccess("/marketing")
+  const initialClients = await listClients()
+
   return (
     <PageShell>
-      <MarketingTabs />
+      <MarketingTabs initialClients={initialClients} />
     </PageShell>
   )
 }
