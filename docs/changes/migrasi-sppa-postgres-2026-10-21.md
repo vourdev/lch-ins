@@ -2,7 +2,7 @@
 
 - **Tanggal:** 2026-10-21
 - **Branch:** `feat/sppa-management-postgres`
-- **PR:** (diisi setelah PR dibuka)
+- **PR:** #10
 - **Dikerjakan oleh:** ZoD3V dengan Claude Code
 
 ## Latar belakang
