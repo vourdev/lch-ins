@@ -2,7 +2,7 @@
 
 - **Tanggal:** 2026-10-21
 - **Branch:** `fix/eslint-errors`
-- **PR:** (akan diisi setelah PR dibuka)
+- **PR:** #15
 - **Dikerjakan oleh:** Antigravity (Claude Fable 5) dengan ZoD3V
 
 ## Latar belakang
