@@ -35,6 +35,12 @@ Modul Master Data adalah sumber tunggal kebenaran (single source of truth) untuk
   - Mengaktifkan rute penuh di `app/(app)/master-data/page.tsx` dengan prefetch data paralel pada Server Component.
   - Menghapus penanda `soon: true` pada menu Master Data di `components/layout/nav-items.ts`.
 
+- **Audit & Pengetatan Validasi Input Angka / Numerik (Frontend Code Review)**:
+  - Memperbarui komponen dasar `TextField` (`components/shared/form-fields.tsx`) dengan prop `digitsOnly`, `numericOnly`, dan `maxLength` agar karakter non-angka disanitasi secara seketika pada event `onChange`.
+  - Menerapkan sanitasi input angka pada `client-form.tsx` (KTP 16 digit angka, NPWP korporasi/perorangan disaring angka dan titik-strip, telepon `type="tel"`).
+  - Menerapkan sanitasi input angka pada form SPPA (`sppa-form.tsx` dan `lib/data/sppa.ts` untuk pertanyaan bertipe angka seperti jumlah lantai dan jumlah tertanggung).
+  - Menerapkan sanitasi pada form Master Data: nomor rekening bank (`finance-docs-tab.tsx`), urutan tampil non-negatif integer (`lookup-values-tab.tsx`), nomor telepon rekanan (`insurers-adjusters-tab.tsx`), dan kode COB 2 digit (`cob-cover-tab.tsx`).
+
 ## File utama
 
 - `lib/server/master-data.ts`: Server data layer untuk operasi CRUD master data, relational reference checking, dan audit trail.

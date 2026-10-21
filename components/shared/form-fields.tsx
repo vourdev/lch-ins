@@ -101,6 +101,9 @@ export function TextField({
   readOnly,
   autoFocus,
   inputMode,
+  digitsOnly,
+  numericOnly,
+  maxLength,
   ...base
 }: BaseProps & {
   id?: string
@@ -114,13 +117,33 @@ export function TextField({
   readOnly?: boolean
   autoFocus?: boolean
   inputMode?: React.HTMLAttributes<HTMLInputElement>["inputMode"]
+  digitsOnly?: boolean
+  numericOnly?: boolean
+  maxLength?: number
 }) {
   const ids = useFieldIds(id)
+
+  function handleChange(raw: string) {
+    let next = raw
+    if (digitsOnly) {
+      next = next.replace(/\D/g, "")
+    } else if (numericOnly) {
+      next = next.replace(/[^0-9.,]/g, "")
+    } else if (type === "tel") {
+      next = next.replace(/[^0-9+() -]/g, "")
+    }
+    if (maxLength && next.length > maxLength) {
+      next = next.slice(0, maxLength)
+    }
+    onChange(next)
+  }
+
   const common = {
     id: ids.fieldId,
     value,
     placeholder,
     readOnly,
+    maxLength,
     "aria-invalid": base.error ? true : undefined,
     "aria-describedby": base.error
       ? ids.errorId
@@ -135,7 +158,7 @@ export function TextField({
         <Textarea
           {...common}
           rows={rows}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={(e) => handleChange(e.target.value)}
         />
       ) : (
         <div className="relative flex items-center">
@@ -148,9 +171,9 @@ export function TextField({
             {...common}
             type={type}
             autoFocus={autoFocus}
-            inputMode={inputMode}
+            inputMode={digitsOnly || numericOnly ? "numeric" : inputMode}
             className={cn(prefix && "pl-14", readOnly && "bg-muted/60")}
-            onChange={(e) => onChange(e.target.value)}
+            onChange={(e) => handleChange(e.target.value)}
           />
         </div>
       )}

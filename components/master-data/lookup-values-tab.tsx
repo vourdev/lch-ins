@@ -391,8 +391,14 @@ export function LookupValuesTab({
               <Input
                 id="lookup-sort"
                 type="number"
+                min={0}
+                step={1}
+                inputMode="numeric"
                 value={sortOrder}
-                onChange={(e) => setSortOrder(Number(e.target.value))}
+                onChange={(e) => {
+                  const cleaned = e.target.value.replace(/\D/g, "")
+                  setSortOrder(cleaned === "" ? 0 : Math.max(0, parseInt(cleaned, 10)))
+                }}
                 className="h-8.5 font-mono text-xs"
               />
             </div>

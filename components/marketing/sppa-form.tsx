@@ -286,6 +286,11 @@ export function SppaForm({
                   label={q.label}
                   value={draft.answers[q.key] ?? ""}
                   placeholder={q.placeholder}
+                  digitsOnly={q.digitsOnly}
+                  numericOnly={q.numericOnly}
+                  inputMode={
+                    q.digitsOnly || q.numericOnly ? "numeric" : undefined
+                  }
                   onChange={(v) =>
                     set({ answers: { ...draft.answers, [q.key]: v } })
                   }

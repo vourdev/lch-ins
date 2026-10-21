@@ -7,7 +7,13 @@ import type { ClassOfBusiness, Sppa } from "./types"
 export const SPPA_QUESTIONS: Partial<
   Record<
     ClassOfBusiness,
-    { key: string; label: string; placeholder?: string }[]
+    {
+      key: string
+      label: string
+      placeholder?: string
+      digitsOnly?: boolean
+      numericOnly?: boolean
+    }[]
   >
 > = {
   Property: [
@@ -16,7 +22,12 @@ export const SPPA_QUESTIONS: Partial<
       label: "Konstruksi bangunan",
       placeholder: "Beton bertulang, atap baja ringan",
     },
-    { key: "floors", label: "Jumlah lantai", placeholder: "4" },
+    {
+      key: "floors",
+      label: "Jumlah lantai",
+      placeholder: "4",
+      digitsOnly: true,
+    },
     {
       key: "protection",
       label: "Proteksi kebakaran",
@@ -52,7 +63,8 @@ export const SPPA_QUESTIONS: Partial<
     {
       key: "insuredPersons",
       label: "Jumlah tertanggung",
-      placeholder: "120 orang",
+      placeholder: "120",
+      digitsOnly: true,
     },
     {
       key: "occupationClass",

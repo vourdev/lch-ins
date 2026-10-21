@@ -423,9 +423,12 @@ export function InsurersAdjustersTab({
                 </Label>
                 <Input
                   id="partner-phone"
-                  placeholder="021-..."
+                  type="tel"
+                  placeholder="021-... atau +62..."
                   value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
+                  onChange={(e) =>
+                    setPhone(e.target.value.replace(/[^0-9+() -]/g, ""))
+                  }
                   className="h-8.5 text-xs"
                 />
               </div>

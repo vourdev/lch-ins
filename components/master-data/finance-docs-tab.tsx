@@ -424,7 +424,11 @@ export function FinanceDocsTab({
                 id="acc-no"
                 placeholder="Contoh: 123-00-9876543-1"
                 value={accountNo}
-                onChange={(e) => setAccountNo(e.target.value)}
+                inputMode="numeric"
+                maxLength={30}
+                onChange={(e) =>
+                  setAccountNo(e.target.value.replace(/[^0-9-]/g, ""))
+                }
                 className="h-8.5 font-mono text-xs"
               />
             </div>

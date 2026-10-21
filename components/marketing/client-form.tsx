@@ -326,9 +326,10 @@ export function ClientForm({
             <TextField
               label="NPWP Perusahaan"
               value={draft.npwp}
-              onChange={(v) => set({ npwp: v })}
+              onChange={(v) => set({ npwp: v.replace(/[^0-9.-]/g, "") })}
               placeholder="00.000.000.0-000.000"
               inputMode="numeric"
+              maxLength={20}
               error={errors.npwp}
             />
             <TextField
@@ -345,6 +346,8 @@ export function ClientForm({
               onChange={(v) => set({ contactPersonIdNumber: v })}
               placeholder="16 digit"
               inputMode="numeric"
+              digitsOnly
+              maxLength={16}
               error={errors.contactPersonIdNumber}
             />
           </div>
@@ -363,6 +366,8 @@ export function ClientForm({
               placeholder={
                 draft.idType === "KTP" ? "16 digit NIK" : "Nomor dokumen"
               }
+              digitsOnly={draft.idType === "KTP"}
+              maxLength={draft.idType === "KTP" ? 16 : 30}
               error={errors.idNumber}
             />
             <TextField
@@ -380,9 +385,10 @@ export function ClientForm({
             <TextField
               label="NPWP"
               value={draft.npwp}
-              onChange={(v) => set({ npwp: v })}
+              onChange={(v) => set({ npwp: v.replace(/[^0-9.-]/g, "") })}
               placeholder="Opsional"
               inputMode="numeric"
+              maxLength={20}
               error={errors.npwp}
             />
             <SelectInput

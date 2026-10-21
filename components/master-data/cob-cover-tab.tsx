@@ -589,7 +589,8 @@ export function CobCoverTab({
                 id="cob-code"
                 placeholder="Contoh: 01, 03, 11"
                 value={cobCode}
-                onChange={(e) => setCobCode(e.target.value)}
+                inputMode="numeric"
+                onChange={(e) => setCobCode(e.target.value.replace(/\D/g, ""))}
                 maxLength={4}
                 className="h-8.5 font-mono text-xs"
               />
