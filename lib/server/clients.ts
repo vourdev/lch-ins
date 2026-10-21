@@ -9,6 +9,7 @@ import type {
   ClientType,
 } from "@/lib/data/types"
 import { CLIENTS } from "@/lib/data/clients"
+import { normalizeCob } from "@/lib/format"
 import { prisma } from "@/lib/prisma"
 
 export interface ClientRecord extends Client {
@@ -206,7 +207,7 @@ function mapPrismaClientToRecord(
     url: d.filePath || undefined,
   }))
 
-  const cobName: CobType = (c.cob?.name || "Property") as CobType
+  const cobName: CobType = normalizeCob(c.cob?.name)
 
   return {
     id: c.id,

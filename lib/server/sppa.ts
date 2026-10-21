@@ -9,6 +9,7 @@ import type {
 } from "@/lib/data/types"
 import { SPPA as MOCK_SPPA } from "@/lib/data/sppa"
 import { CLIENTS } from "@/lib/data/clients"
+import { normalizeCob } from "@/lib/format"
 import { prisma } from "@/lib/prisma"
 
 export interface SppaRecord extends Sppa {
@@ -224,7 +225,7 @@ function mapPrismaSppaToRecord(raw: any): SppaRecord {
     dbId: raw.id,
     clientId: raw.clientId,
     clientName: raw.client?.name ?? undefined,
-    cob: (raw.cob?.name as CobType) ?? "Property",
+    cob: normalizeCob(raw.cob?.name),
     typeOfCover,
     insuredName: raw.insuredName,
     riskLocation: raw.riskLocation ?? "",

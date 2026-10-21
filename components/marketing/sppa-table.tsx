@@ -50,13 +50,12 @@ export function SppaTable({
   const all = useCollection("sppa")
   const slips = useCollection("slips")
   const [query, setQuery] = React.useState("")
-  const [, startTransition] = React.useTransition()
+  const [isPending, startTransition] = React.useTransition()
 
   React.useEffect(() => {
-    if (initialSppa && initialSppa.length > 0) {
-      for (const item of initialSppa) {
-        store.upsert("sppa", item)
-      }
+    if (!initialSppa?.length) return
+    for (const item of initialSppa) {
+      store.upsert("sppa", item)
     }
   }, [initialSppa])
   const [form, setForm] = React.useState<{
@@ -103,6 +102,7 @@ export function SppaTable({
       actions.push({
         label: "Tandai Submitted",
         icon: Send,
+        disabled: isPending,
         onSelect: () => {
           startTransition(async () => {
             const res = await toggleSppaStatusAction(s.id, "Submitted")
@@ -120,7 +120,7 @@ export function SppaTable({
       label: slipCount ? "Hapus (sudah jadi slip)" : "Hapus SPPA",
       icon: Trash2,
       destructive: true,
-      disabled: slipCount > 0,
+      disabled: slipCount > 0 || isPending,
       confirm: {
         title: "Hapus SPPA ini?",
         description: `SPPA ${s.insuredName} (${s.cob}) dihapus permanen.`,

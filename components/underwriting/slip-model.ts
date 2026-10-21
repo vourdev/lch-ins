@@ -12,7 +12,7 @@ import {
 } from "@/lib/data"
 import { OCCUPATION_TARIFFS } from "@/lib/data/ojk-tariff"
 import { todayIso, yearMonth } from "@/lib/date"
-import { romanMonth } from "@/lib/format"
+import { normalizeCob, romanMonth } from "@/lib/format"
 
 let seq = 0
 export const uid = (prefix: string) =>
@@ -118,14 +118,15 @@ export function switchCob(
   slip: PlacingSlip,
   cob: ClassOfBusiness
 ): PlacingSlip {
-  const motor = cob === "Motor Vehicle"
+  const normCob = normalizeCob(cob)
+  const motor = normCob === "Motor Vehicle"
   const sub = motor ? makeMotorSubLines() : { tplLines: [], paLines: [] }
   return recalc({
     ...slip,
-    cob,
+    cob: normCob,
     typeOfCover: "",
     coverCode: null,
-    rateLines: makeRateLines(cob),
+    rateLines: makeRateLines(normCob),
     ...sub,
   })
 }
@@ -283,8 +284,9 @@ export function slipForClient(client: Client): PlacingSlip {
 }
 
 export function slipFromSppa(sppa: Sppa, client: Client | null): PlacingSlip {
-  const base = switchCob(emptySlip(), sppa.cob)
-  const property = sppa.cob === "Property"
+  const cob = normalizeCob(sppa.cob)
+  const base = switchCob(emptySlip(), cob)
+  const property = cob === "Property"
   const amount = {
     id: uid("m"),
     description: sppa.typeOfCover,
@@ -299,7 +301,7 @@ export function slipFromSppa(sppa: Sppa, client: Client | null): PlacingSlip {
       ? (correspondenceAddress(client)?.value ?? "")
       : "",
     typeOfCover: sppa.typeOfCover,
-    coverCode: coverCodeFor(sppa.cob, sppa.typeOfCover),
+    coverCode: coverCodeFor(cob, sppa.typeOfCover),
     currency: sppa.currency,
     inceptionDate: sppa.periodStart,
     expiryDate: sppa.periodEnd,

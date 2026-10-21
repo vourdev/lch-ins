@@ -197,6 +197,7 @@ export function SppaForm({
             items={coverItems}
             value={draft.typeOfCover}
             onValueChange={(v) => set({ typeOfCover: v })}
+            placeholder="Pilih jenis penutupan"
             error={errors.typeOfCover}
           />
           {draft.cob === "Property" ? (
@@ -235,12 +236,14 @@ export function SppaForm({
             items={CURRENCIES}
             value={draft.currency}
             onValueChange={(v) => set({ currency: v })}
+            placeholder="Pilih mata uang"
           />
           <NumberField
             label="Nilai Pertanggungan"
             required
             value={draft.sumInsured}
             onValueChange={(v) => set({ sumInsured: v ?? 0 })}
+            placeholder="0"
             error={errors.sumInsured}
           />
           <TextField
@@ -248,12 +251,14 @@ export function SppaForm({
             type="date"
             value={draft.periodStart ?? ""}
             onChange={(v) => set({ periodStart: v || null })}
+            placeholder="YYYY-MM-DD"
           />
           <TextField
             label="Periode Berakhir"
             type="date"
             value={draft.periodEnd ?? ""}
             onChange={(v) => set({ periodEnd: v || null })}
+            placeholder="YYYY-MM-DD"
             error={errors.periodEnd}
           />
           <SelectInput
@@ -267,6 +272,7 @@ export function SppaForm({
             ]}
             value={draft.status}
             onValueChange={(v) => set({ status: v as SppaStatus })}
+            placeholder="Pilih status SPPA"
           />
         </div>
 

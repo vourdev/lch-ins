@@ -36,18 +36,27 @@ Perubahan ini menyelesaikan migrasi persistensi SPPA ke PostgreSQL menggunakan m
   - `components/marketing/sppa-form.tsx`: Pengalihan submit ke `createSppaAction` / `updateSppaAction` dengan status feedback Toast Sonner dan sinkronisasi store lokal.
 - **Kompatibilitas Downstream Placing Slip**:
   - `app/(app)/underwriting/new/page.tsx` & `components/underwriting/new-slip.tsx`: Server prefetch SPPA dan data klien saat URL mengandung parameter query `?sppa=<id>`, memastikan alur pembuatan placing slip tahan terhadap browser hard refresh.
+- **Penyelarasan Audit Frontend & Normalisasi COB**:
+  - `lib/format.ts`: Penambahan helper fungsi `normalizeCob` untuk konversi nama COB uppercase basis data (misal `PROPERTY`) ke canonical Title Case (`Property`).
+  - `components/underwriting/slip-model.ts`: Dukungan normalisasi COB case-insensitive pada `switchCob` dan `slipFromSppa`, memastikan perhitungan nilai pertanggungan tepat sasaran.
+  - `components/marketing/sppa-form.tsx`: Penambahan placeholder pemandu pada field `NumberField` (Nilai Pertanggungan) dan dropdown seleksi.
+  - `components/marketing/sppa-table.tsx`: Pencegahan double-submit aksi tabel (`disabled: isPending`) dan optimasi hidrasi store lokal.
+  - `scripts/test-sppa-e2e.ts`: Pengujian integrasi otomatis end-to-end menyeluruh (8/8 pengujian lolos).
 
 ## File utama
 
 - `lib/server/sppa.ts`: Server data layer untuk operasi basis data relasional SPPA.
 - `app/(app)/marketing/actions.ts`: Server Actions untuk mutasi SPPA dengan validasi Zod dan proteksi otentikasi.
 - `prisma/seed.ts`: Script pembenihan data awal 3 SPPA mock LCH ke PostgreSQL.
-- `components/marketing/sppa-table.tsx`: Komponen tabel SPPA terhubung ke Server Actions.
-- `components/marketing/sppa-form.tsx`: Komponen form SPPA terhubung ke Server Actions.
+- `lib/format.ts`: Helper normalisasi nama COB relasional ke canonical Title Case.
+- `components/marketing/sppa-table.tsx`: Komponen tabel SPPA terhubung ke Server Actions dengan proteksi double-submit.
+- `components/marketing/sppa-form.tsx`: Komponen form SPPA terhubung ke Server Actions dengan placeholder lengkap.
+- `components/underwriting/slip-model.ts`: Derivasi penomoran dan kalkulasi placing slip dari SPPA dengan normalisasi COB.
 - `app/(app)/marketing/page.tsx`: Server component pemuat data awal klien dan SPPA secara paralel.
 - `components/marketing/marketing-tabs.tsx`: Komponen tab marketing yang mengalirkan data awal ke tabel SPPA.
 - `app/(app)/underwriting/new/page.tsx`: Server component pembuat placing slip dengan prefetch data SPPA.
 - `components/underwriting/new-slip.tsx`: Komponen slip baru dengan dukungan hidrasi awal data SPPA.
+- `scripts/test-sppa-e2e.ts`: Script pengujian integrasi E2E modul SPPA.
 
 ## Dampak
 
@@ -58,6 +67,7 @@ Perubahan ini menyelesaikan migrasi persistensi SPPA ke PostgreSQL menggunakan m
 ## Verifikasi
 
 - `npm run db:seed -- sppa`: Berhasil membenihkan 3 SPPA mock awal (`sppa 3 (3 baru, 0 diperbarui)` dan idempotent pada eksekusi ulang).
+- `npx tsx scripts/test-sppa-e2e.ts`: 8/8 pengujian integrasi lolos (list, getById, Zod schema date/sumInsured, create, update, status toggle, placing slip derivation, referential deletion guard).
 - `npx tsc --noEmit`: 0 kesalahan TypeScript.
 - `npm run build`: Berhasil kompilasi Next.js 16 (Turbopack) dengan 69/69 halaman statis/dinamis tergenerasi tanpa error.
 

@@ -1,3 +1,5 @@
+import type { ClassOfBusiness } from "@/lib/data/types"
+
 export const CURRENCY_SYMBOL: Record<string, string> = {
   IDR: "IDR",
   USD: "USD",
@@ -184,4 +186,25 @@ export function maskEmail(value: string | null | undefined) {
   const [user, domain] = value.split("@")
   if (!domain) return maskMiddle(value)
   return `${user.slice(0, 2)}•••@${domain}`
+}
+
+const COB_CANONICAL_MAP: Record<string, ClassOfBusiness> = {
+  property: "Property",
+  "motor vehicle": "Motor Vehicle",
+  "marine cargo": "Marine Cargo",
+  engineering: "Engineering",
+  liability: "Liability",
+  "personal accident": "Personal Accident",
+  "surety bond": "Surety Bond",
+  terrorism: "Terrorism",
+}
+
+/**
+ * Normalizes Class of Business string (e.g. from database uppercase "PROPERTY")
+ * to standard application Title Case ("Property").
+ */
+export function normalizeCob(cobStr?: string | null): ClassOfBusiness {
+  if (!cobStr) return "Property"
+  const key = cobStr.trim().toLowerCase()
+  return COB_CANONICAL_MAP[key] ?? "Property"
 }
