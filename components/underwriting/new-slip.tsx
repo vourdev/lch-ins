@@ -8,6 +8,8 @@ import {
   slipForClient,
   slipFromSppa,
 } from "@/components/underwriting/slip-model"
+import type { ClientRecord } from "@/lib/server/clients"
+import type { SppaRecord } from "@/lib/server/sppa"
 import { store } from "@/lib/store"
 
 /**
@@ -18,17 +20,31 @@ import { store } from "@/lib/store"
 export function NewSlip({
   sppaId,
   clientId,
+  initialSppa,
+  initialClient,
 }: {
   sppaId?: string
   clientId?: string
+  initialSppa?: SppaRecord
+  initialClient?: ClientRecord
 }) {
+  React.useEffect(() => {
+    if (initialSppa) store.upsert("sppa", initialSppa)
+    if (initialClient) store.upsert("clients", initialClient)
+  }, [initialSppa, initialClient])
+
   const [initial] = React.useState(() => {
-    const sppa = sppaId ? store.get("sppa", sppaId) : null
+    const sppa =
+      (sppaId ? store.get("sppa", sppaId) : null) ?? initialSppa ?? null
     if (sppa) {
-      const client = store.get("clients", sppa.clientId)
+      const client =
+        store.get("clients", sppa.clientId) ?? initialClient ?? null
       return slipFromSppa(sppa, client)
     }
-    const client = clientId ? store.get("clients", clientId) : null
+    const client =
+      (clientId ? store.get("clients", clientId) : null) ??
+      initialClient ??
+      null
     return client ? slipForClient(client) : emptySlip()
   })
   return <PlacingSlipForm initial={initial} mode="new" />

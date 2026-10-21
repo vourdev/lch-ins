@@ -22,6 +22,7 @@ import { hashPassword } from "better-auth/crypto"
 
 import type { RoleCode } from "../lib/access"
 import { CLIENTS } from "../lib/data/clients"
+import { SPPA } from "../lib/data/sppa"
 import { Prisma } from "../lib/generated/prisma/client"
 import { prisma } from "../lib/prisma"
 
@@ -1160,6 +1161,125 @@ async function seedClients() {
   return { created, updated, total: CLIENTS.length }
 }
 
+/**
+ * Pembenihan data awal 3 mock SPPA LCH ke tabel sppa di PostgreSQL.
+ */
+async function seedSppa() {
+  const [cobs, coverTypes, occupations, currencies, clients, user] = await Promise.all([
+    prisma.classOfBusiness.findMany({ select: { id: true, code: true, name: true } }),
+    prisma.coverType.findMany({ select: { id: true, cobId: true, code: true, name: true } }),
+    prisma.occupation.findMany({ select: { id: true, code: true, name: true } }),
+    prisma.currency.findMany({ select: { code: true } }),
+    prisma.client.findMany({ select: { id: true, name: true } }),
+    prisma.user.findFirst({ select: { id: true } }),
+  ])
+
+  const cobMap = new Map<string, { id: string; name: string }>()
+  for (const c of cobs) {
+    cobMap.set(c.name.toLowerCase(), c)
+    cobMap.set(c.code.toLowerCase(), c)
+  }
+
+  const coverTypeMap = new Map<string, string>()
+  for (const ct of coverTypes) {
+    coverTypeMap.set(`${ct.cobId}:${ct.name.toLowerCase()}`, ct.id)
+    coverTypeMap.set(`${ct.cobId}:${ct.code.toLowerCase()}`, ct.id)
+    coverTypeMap.set(ct.name.toLowerCase(), ct.id)
+  }
+
+  const occMap = new Map<string, string>()
+  for (const o of occupations) {
+    occMap.set(o.code.toLowerCase(), o.id)
+  }
+
+  const currSet = new Set(currencies.map((c) => c.code.toUpperCase()))
+  const defaultUserId = user?.id
+
+  let created = 0
+  let updated = 0
+
+  for (const item of SPPA) {
+    const mockClient = CLIENTS.find((c) => c.id === item.clientId)
+    let clientId = clients[0]?.id
+    if (mockClient) {
+      const match = clients.find(
+        (c) => c.name.trim().toLowerCase() === mockClient.name.trim().toLowerCase()
+      )
+      if (match) clientId = match.id
+    }
+
+    const cob = cobMap.get(item.cob.toLowerCase()) || cobs[0]
+    if (!cob || !clientId || !defaultUserId) continue
+
+    const coverTypeId =
+      coverTypeMap.get(`${cob.id}:${item.typeOfCover.toLowerCase()}`) ||
+      coverTypeMap.get(item.typeOfCover.toLowerCase()) ||
+      null
+
+    const occMatch = item.occupation?.match(/^(\d+)/)
+    const occupationId = occMatch ? occMap.get(occMatch[1].toLowerCase()) ?? null : null
+
+    const currencyCode = currSet.has(item.currency.toUpperCase())
+      ? item.currency.toUpperCase()
+      : "IDR"
+
+    const answers = {
+      ...(item.answers ?? {}),
+      _typeOfCover: item.typeOfCover,
+      ...(item.occupation ? { _occupationText: item.occupation } : {}),
+    }
+
+    const existing = await prisma.sppa.findFirst({
+      where: {
+        insuredName: { equals: item.insuredName.trim(), mode: "insensitive" },
+      },
+    })
+
+    if (existing) {
+      await prisma.sppa.update({
+        where: { id: existing.id },
+        data: {
+          clientId,
+          cobId: cob.id,
+          coverTypeId,
+          riskLocation: item.riskLocation || null,
+          occupationId,
+          currencyCode,
+          sumInsured: new Prisma.Decimal(item.sumInsured || 0),
+          periodStart: item.periodStart ? new Date(item.periodStart) : null,
+          periodEnd: item.periodEnd ? new Date(item.periodEnd) : null,
+          answers,
+          status: item.status,
+        },
+      })
+      updated++
+    } else {
+      await prisma.sppa.create({
+        data: {
+          clientId,
+          cobId: cob.id,
+          coverTypeId,
+          insuredName: item.insuredName.trim(),
+          riskLocation: item.riskLocation || null,
+          occupationId,
+          currencyCode,
+          sumInsured: new Prisma.Decimal(item.sumInsured || 0),
+          periodStart: item.periodStart ? new Date(item.periodStart) : null,
+          periodEnd: item.periodEnd ? new Date(item.periodEnd) : null,
+          answers,
+          status: item.status,
+          createdBy: defaultUserId,
+          createdAt: item.createdAt ? new Date(item.createdAt) : undefined,
+          updatedAt: item.updatedAt ? new Date(item.updatedAt) : undefined,
+        },
+      })
+      created++
+    }
+  }
+
+  return { created, updated, total: SPPA.length }
+}
+
 // ---------------------------------------------------------------------------
 
 /**
@@ -1174,6 +1294,7 @@ const SECTIONS = [
   "tariffs",
   "clauses",
   "clients",
+  "sppa",
 ] as const
 
 let seededUsers: {
@@ -1248,6 +1369,13 @@ async function main() {
     const clients = await seedClients()
     console.log(
       `  clients              ${clients.total} (${clients.created} baru, ${clients.updated} diperbarui)`
+    )
+  }
+
+  if (want("sppa")) {
+    const sppa = await seedSppa()
+    console.log(
+      `  sppa                 ${sppa.total} (${sppa.created} baru, ${sppa.updated} diperbarui)`
     )
   }
 

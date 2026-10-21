@@ -4,6 +4,11 @@ import * as React from "react"
 import { toast } from "sonner"
 import * as z from "zod"
 
+import {
+  createSppaAction,
+  updateSppaAction,
+  type ActionResponse,
+} from "@/app/(app)/marketing/actions"
 import { FormDrawer } from "@/components/shared/form-drawer"
 import {
   NumberField,
@@ -23,7 +28,8 @@ import {
 } from "@/lib/data"
 import { OCCUPATION_TARIFFS } from "@/lib/data/ojk-tariff"
 import { addMonths, todayIso } from "@/lib/date"
-import { newId, store, useCollection } from "@/lib/store"
+import type { SppaInput, SppaRecord } from "@/lib/server/sppa"
+import { store, useCollection } from "@/lib/store"
 import { requiredText, validate, type FieldErrors } from "@/lib/validation"
 
 type Draft = Omit<Sppa, "id"> & { id: string | null }
@@ -97,20 +103,44 @@ export function SppaForm({
   const questions = SPPA_QUESTIONS[draft.cob] ?? []
   const coverItems = (TYPE_OF_COVER[draft.cob] ?? []).map((t) => t.label)
 
-  function submit() {
+  async function submit() {
     const result = validate(schema, draft)
     setErrors(result.errors)
     if (!result.ok) return false
-    const record: Sppa = {
-      ...draft,
-      id: draft.id ?? newId("sp"),
-      updatedAt: todayIso(),
+
+    const sppaInput: SppaInput = {
+      clientId: draft.clientId,
+      cob: draft.cob,
+      typeOfCover: draft.typeOfCover,
+      insuredName: draft.insuredName,
+      riskLocation: draft.riskLocation || null,
+      occupation: draft.occupation || null,
+      currency: draft.currency || "IDR",
+      sumInsured: draft.sumInsured,
+      periodStart: draft.periodStart || null,
+      periodEnd: draft.periodEnd || null,
+      answers: draft.answers,
+      status: draft.status,
     }
-    store.upsert("sppa", record)
+
+    let res: ActionResponse<SppaRecord>
+    if (draft.id) {
+      res = await updateSppaAction(draft.id, sppaInput)
+    } else {
+      res = await createSppaAction(sppaInput)
+    }
+
+    if (!res.ok || !res.data) {
+      toast.error(res.error || "Gagal menyimpan data SPPA")
+      return false
+    }
+
+    store.upsert("sppa", res.data)
     toast.success(draft.id ? "SPPA diperbarui" : "SPPA tersimpan", {
-      description: `${record.insuredName} · ${record.cob}`,
+      description: `${res.data.insuredName} · ${res.data.cob}`,
     })
     onOpenChange(false)
+    return true
   }
 
   return (

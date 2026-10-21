@@ -7,6 +7,10 @@ import { toast } from "sonner"
 
 import { SppaForm } from "@/components/marketing/sppa-form"
 import {
+  deleteSppaAction,
+  toggleSppaStatusAction,
+} from "@/app/(app)/marketing/actions"
+import {
   ACTION_COL_CLASS,
   RowActions,
   type RowAction,
@@ -26,21 +30,35 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import type { Sppa } from "@/lib/data"
+import type { SppaRecord } from "@/lib/server/sppa"
 import type { ExportSpec } from "@/lib/export"
 import { dateShort, money } from "@/lib/format"
 import { store, useCollection } from "@/lib/store"
 
-export function SppaTable({
-  clientId,
-  compact,
-}: {
+export interface SppaTableProps {
+  initialSppa?: SppaRecord[]
   /** Batasi ke satu klien (dipakai di halaman detail klien). */
   clientId?: string
   compact?: boolean
-}) {
+}
+
+export function SppaTable({
+  initialSppa,
+  clientId,
+  compact,
+}: SppaTableProps) {
   const all = useCollection("sppa")
   const slips = useCollection("slips")
   const [query, setQuery] = React.useState("")
+  const [, startTransition] = React.useTransition()
+
+  React.useEffect(() => {
+    if (initialSppa && initialSppa.length > 0) {
+      for (const item of initialSppa) {
+        store.upsert("sppa", item)
+      }
+    }
+  }, [initialSppa])
   const [form, setForm] = React.useState<{
     key: number
     sppa: Sppa | null
@@ -86,8 +104,15 @@ export function SppaTable({
         label: "Tandai Submitted",
         icon: Send,
         onSelect: () => {
-          store.update("sppa", s.id, { status: "Submitted" })
-          toast.success("SPPA ditandai Submitted")
+          startTransition(async () => {
+            const res = await toggleSppaStatusAction(s.id, "Submitted")
+            if (res.ok) {
+              store.update("sppa", s.id, { status: "Submitted" })
+              toast.success("SPPA ditandai Submitted")
+            } else {
+              toast.error(res.error || "Gagal mengubah status SPPA")
+            }
+          })
         },
       })
     }
@@ -102,8 +127,15 @@ export function SppaTable({
         actionLabel: "Hapus",
       },
       onSelect: () => {
-        store.remove("sppa", s.id)
-        toast.success("SPPA dihapus")
+        startTransition(async () => {
+          const res = await deleteSppaAction(s.id)
+          if (res.ok) {
+            store.remove("sppa", s.id)
+            toast.success("SPPA dihapus")
+          } else {
+            toast.error(res.error || "Gagal menghapus SPPA")
+          }
+        })
       },
     })
     return actions
@@ -156,7 +188,7 @@ export function SppaTable({
       </div>
 
       <Card className="gap-0 overflow-hidden py-0">
-        <Table className="min-w-[800px]">
+        <Table className="min-w-200">
           <TableHeader>
             <TableRow className="hover:bg-transparent">
               <TableHead className={ACTION_COL_CLASS}>

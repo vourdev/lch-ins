@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
 
-import type { ClientStatus } from "@/lib/data/types"
+import type { ClientStatus, SppaStatus } from "@/lib/data/types"
 import {
   createClient,
   deleteClient,
@@ -12,6 +12,14 @@ import {
   type ClientInput,
   type ClientRecord,
 } from "@/lib/server/clients"
+import {
+  createSppa,
+  deleteSppa,
+  toggleSppaStatus,
+  updateSppa,
+  type SppaInput,
+  type SppaRecord,
+} from "@/lib/server/sppa"
 import { requireAccess } from "@/lib/server/session"
 
 export interface ActionResponse<T = unknown> {
@@ -155,6 +163,136 @@ export async function deleteClientAction(
   } catch (err: unknown) {
     const message =
       err instanceof Error ? err.message : "Gagal menghapus data klien."
+    return { ok: false, error: message }
+  }
+}
+
+const sppaInputSchema = z
+  .object({
+    clientId: z.string().trim().min(1, "Klien wajib dipilih"),
+    cob: z.string().trim().min(1, "Class of Business wajib dipilih"),
+    typeOfCover: z.string().trim().min(1, "Tipe penutupan wajib diisi"),
+    insuredName: z.string().trim().min(1, "Nama tertanggung wajib diisi"),
+    riskLocation: z.string().nullish(),
+    occupation: z.string().nullish(),
+    occupationId: z.string().nullish(),
+    coverTypeId: z.string().nullish(),
+    currency: z.string().default("IDR"),
+    sumInsured: z.coerce.number().min(0, "Nilai pertanggungan tidak boleh negatif"),
+    periodStart: z.string().nullish(),
+    periodEnd: z.string().nullish(),
+    answers: z.record(z.string(), z.string()).optional(),
+    status: z.enum(["Draft", "Submitted"]).optional(),
+  })
+  .refine(
+    (data) => {
+      if (data.periodStart && data.periodEnd) {
+        return new Date(data.periodEnd) >= new Date(data.periodStart)
+      }
+      return true
+    },
+    {
+      message: "Periode akhir asuransi tidak boleh sebelum periode mulai",
+      path: ["periodEnd"],
+    }
+  )
+
+export async function createSppaAction(
+  input: SppaInput
+): Promise<ActionResponse<SppaRecord>> {
+  try {
+    const user = await requireAccess("/marketing")
+    const parsed = sppaInputSchema.safeParse(input)
+    if (!parsed.success) {
+      const firstIssue = parsed.error.issues[0]
+      return {
+        ok: false,
+        error: firstIssue ? firstIssue.message : "Data SPPA tidak valid.",
+      }
+    }
+
+    const created = await createSppa(parsed.data as SppaInput, user.id)
+
+    revalidatePath("/marketing")
+    revalidatePath("/underwriting/new")
+    return { ok: true, data: created }
+  } catch (err: unknown) {
+    const message =
+      err instanceof Error ? err.message : "Gagal membuat SPPA baru."
+    return { ok: false, error: message }
+  }
+}
+
+export async function updateSppaAction(
+  id: string,
+  input: SppaInput
+): Promise<ActionResponse<SppaRecord>> {
+  try {
+    const user = await requireAccess("/marketing")
+    if (!id || !id.trim()) {
+      return { ok: false, error: "ID SPPA tidak valid." }
+    }
+
+    const parsed = sppaInputSchema.safeParse(input)
+    if (!parsed.success) {
+      const firstIssue = parsed.error.issues[0]
+      return {
+        ok: false,
+        error: firstIssue ? firstIssue.message : "Data SPPA tidak valid.",
+      }
+    }
+
+    const updated = await updateSppa(id.trim(), parsed.data as SppaInput, user.id)
+
+    revalidatePath("/marketing")
+    revalidatePath("/underwriting/new")
+    return { ok: true, data: updated }
+  } catch (err: unknown) {
+    const message =
+      err instanceof Error ? err.message : "Gagal memperbarui data SPPA."
+    return { ok: false, error: message }
+  }
+}
+
+export async function toggleSppaStatusAction(
+  id: string,
+  status: SppaStatus
+): Promise<ActionResponse<void>> {
+  try {
+    await requireAccess("/marketing")
+    if (!id || !id.trim()) {
+      return { ok: false, error: "ID SPPA tidak valid." }
+    }
+
+    await toggleSppaStatus(id.trim(), status)
+
+    revalidatePath("/marketing")
+    revalidatePath("/underwriting/new")
+    return { ok: true }
+  } catch (err: unknown) {
+    const message =
+      err instanceof Error ? err.message : "Gagal memperbarui status SPPA."
+    return { ok: false, error: message }
+  }
+}
+
+export async function deleteSppaAction(
+  id: string
+): Promise<ActionResponse<void>> {
+  try {
+    await requireAccess("/marketing")
+    if (!id || !id.trim()) {
+      return { ok: false, error: "ID SPPA tidak valid." }
+    }
+
+    await deleteSppa(id.trim())
+
+    revalidatePath("/marketing")
+    revalidatePath("/underwriting/new")
+    return { ok: true }
+  } catch (err: unknown) {
+    const message =
+      err instanceof Error ? err.message : "Gagal menghapus data SPPA."
     return { ok: false, error: message }
   }
 }

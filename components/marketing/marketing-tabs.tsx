@@ -12,14 +12,20 @@ import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import type { Client } from "@/lib/data"
 import type { ClientRecord } from "@/lib/server/clients"
+import type { SppaRecord } from "@/lib/server/sppa"
 import { useCollection } from "@/lib/store"
 
 interface MarketingTabsProps {
   initialClients?: ClientRecord[]
+  initialSppa?: SppaRecord[]
 }
 
-export function MarketingTabs({ initialClients }: MarketingTabsProps) {
+export function MarketingTabs({
+  initialClients,
+  initialSppa,
+}: MarketingTabsProps) {
   const sppa = useCollection("sppa")
+  const sppaCount = initialSppa?.length ?? sppa.length
   const [form, setForm] = React.useState<{
     key: number
     client: Client | null
@@ -45,7 +51,7 @@ export function MarketingTabs({ initialClients }: MarketingTabsProps) {
       <Tabs defaultValue="clients" className="flex flex-col gap-4">
         <TabsList className="no-print">
           <TabsTrigger value="clients">Database Klien</TabsTrigger>
-          <TabsTrigger value="sppa">SPPA ({sppa.length})</TabsTrigger>
+          <TabsTrigger value="sppa">SPPA ({sppaCount})</TabsTrigger>
           <TabsTrigger value="renewal">Renewal Notice</TabsTrigger>
         </TabsList>
         <TabsContent value="clients">
@@ -57,7 +63,7 @@ export function MarketingTabs({ initialClients }: MarketingTabsProps) {
           />
         </TabsContent>
         <TabsContent value="sppa">
-          <SppaTable />
+          <SppaTable initialSppa={initialSppa} />
         </TabsContent>
         <TabsContent value="renewal">
           <RenewalNotice />
