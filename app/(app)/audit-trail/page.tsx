@@ -1,27 +1,29 @@
+import type { Metadata } from "next"
+
+import { AuditTable } from "@/components/audit/audit-table"
 import { PageHeader, PageShell } from "@/components/layout/page-header"
-import { ModulePlaceholder } from "@/components/shared/module-placeholder"
+import { listAuditEntities, listAuditLogs } from "@/lib/server/audit"
+import { requireAdmin } from "@/lib/server/session"
 
-export const metadata = { title: "Audit Trail — LCH Insurance Brokers" }
+export const metadata: Metadata = { title: "Audit Trail — LCH Insurance Brokers" }
 
-export default function AuditTrailPage() {
+export default async function AuditTrailPage() {
+  await requireAdmin("/audit-trail")
+
+  const [logsResult, entities] = await Promise.all([
+    listAuditLogs({ pageSize: 100 }),
+    listAuditEntities(),
+  ])
+
   return (
     <PageShell>
       <PageHeader
         title="Audit Trail"
-        description="Catatan siapa mengubah apa dan kapan"
+        description="Catatan riwayat aktivitas siapa mengubah apa dan kapan di seluruh sistem LCH"
       />
-      <ModulePlaceholder
-        phase="Usulan tambahan"
-        week="menyusul persetujuan LCH"
-        features={[
-          "Log perubahan pada placing slip, polis, klaim, DN, CN, dan pembayaran",
-          "Nilai sebelum dan sesudah diubah",
-          "Filter per pengguna, per modul, dan per tanggal",
-          "Tidak bisa dihapus dari aplikasi",
-        ]}
-        pending={[
-          "Konfirmasi apakah modul ini dipakai, karena di luar daftar 14 menu awal",
-        ]}
+      <AuditTable
+        initialLogs={logsResult.items}
+        availableEntities={entities}
       />
     </PageShell>
   )

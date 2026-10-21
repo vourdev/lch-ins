@@ -48,11 +48,22 @@ const STATUS_TONE: Record<string, Tone> = {
   "Dokumen Lengkap": "info",
   "Proses Adjuster": "info",
   "SPK / SPGR terbit": "info",
+  /* audit action */
+  Create: "success",
+  Update: "info",
+  Delete: "danger",
+  Release: "info",
+  Cancel: "warning",
 }
 
 /** Label tampilan untuk status yang disimpan dalam bahasa Inggris. */
 const STATUS_LABEL: Record<string, string> = {
   Cancelled: "Dibatalkan",
+  Create: "Tambah",
+  Update: "Ubah",
+  Delete: "Hapus",
+  Release: "Rilis",
+  Cancel: "Batal",
 }
 
 const BASE =

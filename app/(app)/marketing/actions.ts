@@ -130,12 +130,12 @@ export async function toggleClientStatusAction(
   status: ClientStatus
 ): Promise<ActionResponse<void>> {
   try {
-    await requireAccess("/marketing")
+    const user = await requireAccess("/marketing")
     if (!id || !id.trim()) {
       return { ok: false, error: "ID klien tidak valid." }
     }
 
-    await toggleClientStatus(id.trim(), status)
+    await toggleClientStatus(id.trim(), status, user.id)
 
     revalidatePath("/marketing")
     revalidatePath(`/marketing/clients/${id}`)
@@ -151,12 +151,12 @@ export async function deleteClientAction(
   id: string
 ): Promise<ActionResponse<void>> {
   try {
-    await requireAccess("/marketing")
+    const user = await requireAccess("/marketing")
     if (!id || !id.trim()) {
       return { ok: false, error: "ID klien tidak valid." }
     }
 
-    await deleteClient(id.trim())
+    await deleteClient(id.trim(), user.id)
 
     revalidatePath("/marketing")
     return { ok: true }
@@ -259,12 +259,12 @@ export async function toggleSppaStatusAction(
   status: SppaStatus
 ): Promise<ActionResponse<void>> {
   try {
-    await requireAccess("/marketing")
+    const user = await requireAccess("/marketing")
     if (!id || !id.trim()) {
       return { ok: false, error: "ID SPPA tidak valid." }
     }
 
-    await toggleSppaStatus(id.trim(), status)
+    await toggleSppaStatus(id.trim(), status, user.id)
 
     revalidatePath("/marketing")
     revalidatePath("/underwriting/new")
@@ -280,12 +280,12 @@ export async function deleteSppaAction(
   id: string
 ): Promise<ActionResponse<void>> {
   try {
-    await requireAccess("/marketing")
+    const user = await requireAccess("/marketing")
     if (!id || !id.trim()) {
       return { ok: false, error: "ID SPPA tidak valid." }
     }
 
-    await deleteSppa(id.trim())
+    await deleteSppa(id.trim(), user.id)
 
     revalidatePath("/marketing")
     revalidatePath("/underwriting/new")

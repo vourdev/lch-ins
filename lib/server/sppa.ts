@@ -11,6 +11,7 @@ import { SPPA as MOCK_SPPA } from "@/lib/data/sppa"
 import { CLIENTS } from "@/lib/data/clients"
 import { normalizeCob } from "@/lib/format"
 import { prisma } from "@/lib/prisma"
+import { recordAudit } from "@/server/services/audit"
 
 export interface SppaRecord extends Sppa {
   dbId: string
@@ -459,6 +460,16 @@ export async function createSppa(input: SppaInput, userId: string): Promise<Sppa
     },
   })
 
+  if (userId) {
+    await recordAudit({
+      userId,
+      entity: "sppa",
+      entityId: created.id,
+      action: "Create",
+      after: created,
+    })
+  }
+
   return mapPrismaSppaToRecord(created)
 }
 
@@ -468,12 +479,16 @@ export async function createSppa(input: SppaInput, userId: string): Promise<Sppa
 export async function updateSppa(
   id: string,
   input: SppaInput,
-  _userId?: string
+  userId?: string
 ): Promise<SppaRecord> {
   const existing = await getSppaById(id)
   if (!existing) {
     throw new Error("Data SPPA tidak ditemukan.")
   }
+
+  const before = await prisma.sppa.findUnique({
+    where: { id: existing.dbId },
+  })
 
   const cache = await getSppaLookupsCache()
   const clientId = await resolveClientId(input.clientId)
@@ -522,6 +537,17 @@ export async function updateSppa(
     },
   })
 
+  if (userId) {
+    await recordAudit({
+      userId,
+      entity: "sppa",
+      entityId: existing.dbId,
+      action: "Update",
+      before,
+      after: updated,
+    })
+  }
+
   return mapPrismaSppaToRecord(updated)
 }
 
@@ -530,24 +556,41 @@ export async function updateSppa(
  */
 export async function toggleSppaStatus(
   id: string,
-  status: SppaStatus
+  status: SppaStatus,
+  userId?: string
 ): Promise<void> {
   const existing = await getSppaById(id)
   if (!existing) {
     throw new Error("Data SPPA tidak ditemukan.")
   }
 
+  const before = await prisma.sppa.findUnique({
+    where: { id: existing.dbId },
+    select: { status: true },
+  })
+
   await prisma.sppa.update({
     where: { id: existing.dbId },
     data: { status },
   })
+
+  if (userId) {
+    await recordAudit({
+      userId,
+      entity: "sppa",
+      entityId: existing.dbId,
+      action: "Update",
+      before: { status: before?.status },
+      after: { status },
+    })
+  }
 }
 
 /**
  * Delete SPPA record from PostgreSQL.
  * Rejects deletion if SPPA is referenced in any Placing Slip.
  */
-export async function deleteSppa(id: string): Promise<void> {
+export async function deleteSppa(id: string, userId?: string): Promise<void> {
   const existing = await getSppaById(id)
   if (!existing) {
     throw new Error("Data SPPA tidak ditemukan.")
@@ -563,7 +606,21 @@ export async function deleteSppa(id: string): Promise<void> {
     )
   }
 
+  const before = await prisma.sppa.findUnique({
+    where: { id: existing.dbId },
+  })
+
   await prisma.sppa.delete({
     where: { id: existing.dbId },
   })
+
+  if (userId) {
+    await recordAudit({
+      userId,
+      entity: "sppa",
+      entityId: existing.dbId,
+      action: "Delete",
+      before,
+    })
+  }
 }

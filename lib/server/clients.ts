@@ -11,6 +11,7 @@ import type {
 import { CLIENTS } from "@/lib/data/clients"
 import { normalizeCob } from "@/lib/format"
 import { prisma } from "@/lib/prisma"
+import { recordAudit } from "@/server/services/audit"
 
 export interface ClientRecord extends Client {
   dbId: string
@@ -618,6 +619,16 @@ export async function createClient(
       }
     }
 
+    if (userId) {
+      await recordAudit(tx, {
+        userId,
+        entity: "clients",
+        entityId: created.id,
+        action: "Create",
+        after: created,
+      })
+    }
+
     return created
   })
 
@@ -678,6 +689,10 @@ export async function updateClient(
   const corporate = input.clientType === "Korporasi"
 
   await prisma.$transaction(async (tx) => {
+    const before = await tx.client.findUnique({
+      where: { id: existing.dbId },
+    })
+
     await tx.client.update({
       where: { id: existing.dbId },
       data: {
@@ -754,6 +769,20 @@ export async function updateClient(
         }
       }
     }
+
+    if (userId) {
+      const after = await tx.client.findUnique({
+        where: { id: existing.dbId },
+      })
+      await recordAudit(tx, {
+        userId,
+        entity: "clients",
+        entityId: existing.dbId,
+        action: "Update",
+        before,
+        after,
+      })
+    }
   })
 
   return getClientById(existing.dbId) as Promise<ClientRecord>
@@ -764,7 +793,8 @@ export async function updateClient(
  */
 export async function toggleClientStatus(
   id: string,
-  status: ClientStatus
+  status: ClientStatus,
+  userId?: string
 ): Promise<void> {
   const existing = await getClientById(id)
   if (!existing) {
@@ -781,13 +811,24 @@ export async function toggleClientStatus(
     where: { id: existing.dbId },
     data: { statusId },
   })
+
+  if (userId) {
+    await recordAudit({
+      userId,
+      entity: "clients",
+      entityId: existing.dbId,
+      action: "Update",
+      before: { status: existing.status },
+      after: { status },
+    })
+  }
 }
 
 /**
  * Delete client record along with addresses and KYC documents.
  * Rejects deletion if client is referenced in SPPA, placing slips, or policies.
  */
-export async function deleteClient(id: string): Promise<void> {
+export async function deleteClient(id: string, userId?: string): Promise<void> {
   const existing = await getClientById(id)
   if (!existing) {
     throw new Error("Klien tidak ditemukan di database.")
@@ -818,9 +859,23 @@ export async function deleteClient(id: string): Promise<void> {
     )
   }
 
-  await prisma.$transaction([
-    prisma.clientAddress.deleteMany({ where: { clientId: existing.dbId } }),
-    prisma.clientDocument.deleteMany({ where: { clientId: existing.dbId } }),
-    prisma.client.delete({ where: { id: existing.dbId } }),
-  ])
+  const before = await prisma.client.findUnique({
+    where: { id: existing.dbId },
+  })
+
+  await prisma.$transaction(async (tx) => {
+    await tx.clientAddress.deleteMany({ where: { clientId: existing.dbId } })
+    await tx.clientDocument.deleteMany({ where: { clientId: existing.dbId } })
+    await tx.client.delete({ where: { id: existing.dbId } })
+
+    if (userId) {
+      await recordAudit(tx, {
+        userId,
+        entity: "clients",
+        entityId: existing.dbId,
+        action: "Delete",
+        before,
+      })
+    }
+  })
 }

@@ -1,4 +1,5 @@
 import type { AuditAction, Prisma } from "@/lib/generated/prisma/client"
+import { prisma } from "@/lib/prisma"
 
 /**
  * Audit trail (PRD A-03): setiap tambah, ubah, hapus, release, dan batal
@@ -21,7 +22,7 @@ type Snapshot = Record<string, unknown> | null | undefined
 
 export interface AuditEntry {
   userId: string
-  /** Nama tabel, misalnya "placing_slips". */
+  /** Nama tabel, misalnya "placing_slips" atau "clients". */
   entity: string
   entityId: string
   action: AuditAction
@@ -29,8 +30,19 @@ export interface AuditEntry {
   after?: Snapshot
 }
 
-/** Kolom teknis yang tidak perlu masuk catatan perubahan. */
-const IGNORED_FIELDS = new Set(["updatedAt", "createdAt"])
+/**
+ * Technical and sensitive credential fields that must NEVER be persisted in changes.
+ */
+const IGNORED_FIELDS = new Set([
+  "updatedAt",
+  "createdAt",
+  "password",
+  "passwordHash",
+  "temporaryPassword",
+  "token",
+  "secret",
+  "salt",
+])
 
 /** Ubah ke nilai JSON biasa: Decimal jadi string, Date jadi ISO. */
 function toJson(value: unknown): Prisma.InputJsonValue | null {
@@ -59,9 +71,20 @@ export function diffChanges(before: Snapshot, after: Snapshot) {
 export async function recordAudit(
   tx: Prisma.TransactionClient,
   entry: AuditEntry
+): Promise<Prisma.AuditLogGetPayload<Record<string, never>>>
+export async function recordAudit(
+  entry: AuditEntry
+): Promise<Prisma.AuditLogGetPayload<Record<string, never>>>
+export async function recordAudit(
+  first: Prisma.TransactionClient | AuditEntry,
+  second?: AuditEntry
 ) {
+  const isTx = second !== undefined
+  const client = isTx ? (first as Prisma.TransactionClient) : prisma
+  const entry = isTx ? second : (first as AuditEntry)
+
   const changes = diffChanges(entry.before, entry.after)
-  return tx.auditLog.create({
+  return client.auditLog.create({
     data: {
       userId: entry.userId,
       entity: entry.entity,

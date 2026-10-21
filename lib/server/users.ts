@@ -10,6 +10,7 @@ import {
 } from "@/lib/access"
 import { prisma } from "@/lib/prisma"
 import { requireAdmin } from "@/lib/server/session"
+import { recordAudit } from "@/server/services/audit"
 
 export interface UserSummary {
   id: string
@@ -145,7 +146,7 @@ export async function createUser(data: CreateUserInput): Promise<{
   user: UserSummary
   temporaryPassword: string
 }> {
-  await requireAdmin("/users")
+  const admin = await requireAdmin("/users")
 
   const name = data.name?.trim()
   const email = data.email?.trim().toLowerCase()
@@ -208,6 +209,20 @@ export async function createUser(data: CreateUserInput): Promise<{
         providerId: "credential",
         accountId: newUser.id,
         password: passwordHash,
+      },
+    })
+
+    await recordAudit(tx, {
+      userId: admin.id,
+      entity: "users",
+      entityId: newUser.id,
+      action: "Create",
+      after: {
+        name: newUser.name,
+        email: newUser.email,
+        roles: newUser.roles,
+        jobTitle: newUser.jobTitle,
+        isActive: newUser.isActive,
       },
     })
 
@@ -349,6 +364,27 @@ export async function updateUser(
       })
     }
 
+    await recordAudit(tx, {
+      userId: admin.id,
+      entity: "users",
+      entityId: id,
+      action: "Update",
+      before: {
+        name: target.name,
+        email: target.email,
+        roles: target.roles,
+        jobTitle: target.jobTitle,
+        isActive: target.isActive,
+      },
+      after: {
+        name: res.name,
+        email: res.email,
+        roles: res.roles,
+        jobTitle: res.jobTitle,
+        isActive: res.isActive,
+      },
+    })
+
     return res
   })
 
@@ -419,6 +455,15 @@ export async function toggleUserStatus(
       })
     }
 
+    await recordAudit(tx, {
+      userId: admin.id,
+      entity: "users",
+      entityId: id,
+      action: "Update",
+      before: { isActive: target.isActive },
+      after: { isActive },
+    })
+
     return res
   })
 
@@ -436,7 +481,7 @@ export async function toggleUserStatus(
 export async function resetUserPassword(id: string): Promise<{
   temporaryPassword: string
 }> {
-  await requireAdmin("/users")
+  const admin = await requireAdmin("/users")
 
   const target = await prisma.user.findUnique({
     where: { id },
@@ -477,6 +522,14 @@ export async function resetUserPassword(id: string): Promise<{
     // Cabut seluruh sesi aktif yang ada
     await tx.session.deleteMany({
       where: { userId: id },
+    })
+
+    await recordAudit(tx, {
+      userId: admin.id,
+      entity: "users",
+      entityId: id,
+      action: "Update",
+      after: { passwordReset: true },
     })
   })
 
