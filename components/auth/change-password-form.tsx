@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { useActionState } from "react"
 import { AlertTriangle, Eye, EyeOff, LoaderCircle, LogOut } from "lucide-react"
 
@@ -18,12 +18,6 @@ export function ChangePasswordForm() {
   const [showCurrentPassword, setShowCurrentPassword] = useState(false)
   const [showNewPassword, setShowNewPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
-
-  useEffect(() => {
-    if (state?.success) {
-      window.location.replace("/")
-    }
-  }, [state])
 
   return (
     <form action={formAction} className="flex flex-col gap-4">

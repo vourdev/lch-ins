@@ -74,5 +74,5 @@ export async function changePasswordAction(
   ])
 
   revalidatePath("/", "layout")
-  return { success: true }
+  redirect("/")
 }
