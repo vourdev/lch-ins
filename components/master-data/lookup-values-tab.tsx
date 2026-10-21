@@ -88,9 +88,11 @@ export function LookupValuesTab({
   const [sortOrder, setSortOrder] = React.useState(0)
   const [isActive, setIsActive] = React.useState(true)
 
-  React.useEffect(() => {
+  const [prevLookups, setPrevLookups] = React.useState(initialLookups)
+  if (prevLookups !== initialLookups) {
+    setPrevLookups(initialLookups)
     setLookups(initialLookups)
-  }, [initialLookups])
+  }
 
   const filteredLookups = React.useMemo(() => {
     const q = query.trim().toLowerCase()

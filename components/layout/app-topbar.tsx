@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Bell, LogOut, User as UserIcon } from "lucide-react"
+import { Bell, LogOut } from "lucide-react"
 
 import { CommandMenu } from "@/components/layout/command-menu"
 import { ThemeToggle } from "@/components/layout/theme-toggle"

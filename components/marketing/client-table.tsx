@@ -54,6 +54,10 @@ const STATUS_ITEMS = [
   ...CLIENT_STATUSES.map((s) => ({ label: s, value: s })),
 ]
 
+interface ClientWithUsage extends Client {
+  isUsedInDocuments?: boolean
+}
+
 interface ClientTableProps {
   onEdit: (client: Client) => void
   initialClients?: Client[]
@@ -100,7 +104,7 @@ export function ClientTable({ onEdit, initialClients }: ClientTableProps) {
   function actionsFor(c: Client): RowAction[] {
     // Klien yang sudah dipakai dokumen tidak dihapus, cukup dinonaktifkan (ERD).
     const used =
-      Boolean((c as any).isUsedInDocuments) ||
+      Boolean((c as ClientWithUsage).isUsedInDocuments) ||
       slips.some((s) => s.clientId === c.id) ||
       policies.some((p) => p.clientId === c.id) ||
       sppa.some((s) => s.clientId === c.id)

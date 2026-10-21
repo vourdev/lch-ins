@@ -82,9 +82,11 @@ export function CobCoverTab({
   const [coverName, setCoverName] = React.useState("")
   const [coverIsActive, setCoverIsActive] = React.useState(true)
 
-  React.useEffect(() => {
+  const [prevInitialCobs, setPrevInitialCobs] = React.useState(initialCobs)
+  if (prevInitialCobs !== initialCobs) {
+    setPrevInitialCobs(initialCobs)
     setCobs(initialCobs)
-  }, [initialCobs])
+  }
 
   const filteredCobs = React.useMemo(() => {
     const q = query.trim().toLowerCase()

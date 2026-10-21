@@ -39,35 +39,43 @@ export function UserFormDialog({
   currentUserId,
   onSuccess,
 }: UserFormDialogProps) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-125">
+        {open ? (
+          <UserFormContent
+            key={user?.id ?? "new"}
+            user={user}
+            currentUserId={currentUserId}
+            onOpenChange={onOpenChange}
+            onSuccess={onSuccess}
+          />
+        ) : null}
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function UserFormContent({
+  user,
+  currentUserId,
+  onOpenChange,
+  onSuccess,
+}: {
+  user?: UserSummary | null
+  currentUserId?: string
+  onOpenChange: (open: boolean) => void
+  onSuccess: (payload: { user: UserSummary; temporaryPassword?: string }) => void
+}) {
   const isEditing = Boolean(user)
   const [isPending, startTransition] = React.useTransition()
 
-  const [name, setName] = React.useState("")
-  const [email, setEmail] = React.useState("")
-  const [jobTitle, setJobTitle] = React.useState("")
-  const [selectedRoles, setSelectedRoles] = React.useState<RoleCode[]>([])
-  const [isActive, setIsActive] = React.useState(true)
+  const [name, setName] = React.useState(user?.name ?? "")
+  const [email, setEmail] = React.useState(user?.email ?? "")
+  const [jobTitle, setJobTitle] = React.useState(user?.jobTitle ?? "")
+  const [selectedRoles, setSelectedRoles] = React.useState<RoleCode[]>(user?.roles ?? [])
+  const [isActive, setIsActive] = React.useState(user?.isActive ?? true)
   const [formError, setFormError] = React.useState<string | null>(null)
-
-  // Reset or populate form fields when dialog opens or user prop changes
-  React.useEffect(() => {
-    if (open) {
-      if (user) {
-        setName(user.name)
-        setEmail(user.email)
-        setJobTitle(user.jobTitle ?? "")
-        setSelectedRoles(user.roles ?? [])
-        setIsActive(user.isActive)
-      } else {
-        setName("")
-        setEmail("")
-        setJobTitle("")
-        setSelectedRoles([])
-        setIsActive(true)
-      }
-      setFormError(null)
-    }
-  }, [open, user])
 
   function handleSubmit(e: React.SyntheticEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -133,134 +141,132 @@ export function UserFormDialog({
   const isSelf = user?.id === currentUserId
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-125">
-        <DialogHeader>
-          <div className="flex items-center gap-2">
-            <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-              {isEditing ? (
-                <UserCog className="size-4" />
-              ) : (
-                <UserPlus className="size-4" />
+    <>
+      <DialogHeader>
+        <div className="flex items-center gap-2">
+          <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+            {isEditing ? (
+              <UserCog className="size-4" />
+            ) : (
+              <UserPlus className="size-4" />
+            )}
+          </div>
+          <DialogTitle>
+            {isEditing ? "Edit Pengguna" : "Tambah Pengguna Baru"}
+          </DialogTitle>
+        </div>
+        <DialogDescription>
+          {isEditing
+            ? "Perbarui informasi akun, jabatan, dan hak akses pengguna."
+            : "Masukkan informasi akun dan pilih hak akses peran."}
+        </DialogDescription>
+      </DialogHeader>
+
+      <form onSubmit={handleSubmit} className="space-y-4 py-2">
+        {formError && (
+          <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">
+            {formError}
+          </div>
+        )}
+
+        <div className="space-y-2">
+          <Label htmlFor="user-name">
+            Nama Lengkap <span className="text-destructive">*</span>
+          </Label>
+          <Input
+            id="user-name"
+            placeholder="Contoh: Budi Santoso"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            disabled={isPending}
+            required
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="user-email">
+            Alamat Email <span className="text-destructive">*</span>
+          </Label>
+          <Input
+            id="user-email"
+            type="email"
+            placeholder="nama@lch.co.id"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            disabled={isPending}
+            required
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="user-job-title">Jabatan / Posisi</Label>
+          <Input
+            id="user-job-title"
+            placeholder="Contoh: SPV, Staff, Direktur"
+            value={jobTitle}
+            onChange={(e) => setJobTitle(e.target.value)}
+            disabled={isPending}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <Label htmlFor="user-roles">
+              Peran Pengguna (Multi-Role) <span className="text-destructive">*</span>
+            </Label>
+            <span className="text-xs text-muted-foreground">
+              {selectedRoles.length} dipilih
+            </span>
+          </div>
+          <RoleMultiSelect
+            id="user-roles"
+            value={selectedRoles}
+            onChange={setSelectedRoles}
+            disabled={isPending}
+          />
+        </div>
+
+        {isEditing && (
+          <div className="flex items-center justify-between rounded-lg border p-3">
+            <div className="space-y-0.5">
+              <Label htmlFor="user-status" className="cursor-pointer">
+                Status Akun
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                {isActive
+                  ? "Akun aktif dan dapat masuk ke sistem."
+                  : "Akun nonaktif dan seluruh sesi akan dicabut."}
+              </p>
+              {isSelf && (
+                <p className="text-[11px] text-amber-600 dark:text-amber-400">
+                  Akun sendiri tidak dapat dinonaktifkan.
+                </p>
               )}
             </div>
-            <DialogTitle>
-              {isEditing ? "Edit Pengguna" : "Tambah Pengguna Baru"}
-            </DialogTitle>
-          </div>
-          <DialogDescription>
-            {isEditing
-              ? "Perbarui informasi akun, jabatan, dan hak akses pengguna."
-              : "Masukkan informasi akun dan pilih hak akses peran."}
-          </DialogDescription>
-        </DialogHeader>
-
-        <form onSubmit={handleSubmit} className="space-y-4 py-2">
-          {formError && (
-            <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">
-              {formError}
-            </div>
-          )}
-
-          <div className="space-y-2">
-            <Label htmlFor="user-name">
-              Nama Lengkap <span className="text-destructive">*</span>
-            </Label>
-            <Input
-              id="user-name"
-              placeholder="Contoh: Budi Santoso"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              disabled={isPending}
-              required
+            <Switch
+              id="user-status"
+              checked={isActive}
+              onCheckedChange={setIsActive}
+              disabled={isPending || isSelf}
             />
           </div>
+        )}
 
-          <div className="space-y-2">
-            <Label htmlFor="user-email">
-              Alamat Email <span className="text-destructive">*</span>
-            </Label>
-            <Input
-              id="user-email"
-              type="email"
-              placeholder="nama@lch.co.id"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              disabled={isPending}
-              required
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="user-job-title">Jabatan / Posisi</Label>
-            <Input
-              id="user-job-title"
-              placeholder="Contoh: SPV, Staff, Direktur"
-              value={jobTitle}
-              onChange={(e) => setJobTitle(e.target.value)}
-              disabled={isPending}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="user-roles">
-                Peran Pengguna (Multi-Role) <span className="text-destructive">*</span>
-              </Label>
-              <span className="text-xs text-muted-foreground">
-                {selectedRoles.length} dipilih
-              </span>
-            </div>
-            <RoleMultiSelect
-              id="user-roles"
-              value={selectedRoles}
-              onChange={setSelectedRoles}
-              disabled={isPending}
-            />
-          </div>
-
-          {isEditing && (
-            <div className="flex items-center justify-between rounded-lg border p-3">
-              <div className="space-y-0.5">
-                <Label htmlFor="user-status" className="cursor-pointer">
-                  Status Akun
-                </Label>
-                <p className="text-xs text-muted-foreground">
-                  {isActive
-                    ? "Akun aktif dan dapat masuk ke sistem."
-                    : "Akun nonaktif dan seluruh sesi akan dicabut."}
-                </p>
-                {isSelf && (
-                  <p className="text-[11px] text-amber-600 dark:text-amber-400">
-                    Akun sendiri tidak dapat dinonaktifkan.
-                  </p>
-                )}
-              </div>
-              <Switch
-                id="user-status"
-                checked={isActive}
-                onCheckedChange={setIsActive}
-                disabled={isPending || isSelf}
-              />
-            </div>
-          )}
-
-          <DialogFooter className="pt-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={isPending}
-            >
-              Batal
-            </Button>
-            <Button type="submit" disabled={isPending} className="gap-2">
-              {isPending && <Loader2 className="size-4 animate-spin" />}
-              {isEditing ? "Simpan Perubahan" : "Buat Pengguna"}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+        <DialogFooter className="pt-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={isPending}
+          >
+            Batal
+          </Button>
+          <Button type="submit" disabled={isPending} className="gap-2">
+            {isPending && <Loader2 className="size-4 animate-spin" />}
+            {isEditing ? "Simpan Perubahan" : "Buat Pengguna"}
+          </Button>
+        </DialogFooter>
+      </form>
+    </>
   )
 }

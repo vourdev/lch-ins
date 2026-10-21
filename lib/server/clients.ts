@@ -10,6 +10,7 @@ import type {
 } from "@/lib/data/types"
 import { CLIENTS } from "@/lib/data/clients"
 import { normalizeCob } from "@/lib/format"
+import type { Prisma } from "@/lib/generated/prisma/client"
 import { prisma } from "@/lib/prisma"
 import { recordAudit } from "@/server/services/audit"
 
@@ -179,11 +180,35 @@ function toDateOnly(d: Date | null | undefined): string | undefined {
   return d.toISOString().split("T")[0]
 }
 
+type PrismaClientWithRelations = Prisma.ClientGetPayload<{
+  include: {
+    clientType: true
+    idType: true
+    incomeSource: true
+    insurancePurpose: true
+    status: true
+    cob: true
+    addresses: {
+      include: { addressType: true }
+    }
+    documents: {
+      include: { documentType: true }
+    }
+    _count: {
+      select: {
+        sppa: true
+        placingSlips: true
+        policies: true
+      }
+    }
+  }
+}>
+
 /**
  * Transform Prisma database entity into UI-compatible ClientRecord.
  */
 function mapPrismaClientToRecord(
-  c: any,
+  c: PrismaClientWithRelations,
   counts?: { sppa?: number; placingSlips?: number; policies?: number }
 ): ClientRecord {
   const isUsed = Boolean(
@@ -192,7 +217,7 @@ function mapPrismaClientToRecord(
       (counts?.policies ?? c._count?.policies ?? 0) > 0
   )
 
-  const addresses: ClientAddress[] = (c.addresses || []).map((a: any) => ({
+  const addresses: ClientAddress[] = (c.addresses || []).map((a) => ({
     id: a.id,
     label: a.addressType?.name || "Alamat Korespondensi",
     value: a.address,
@@ -200,7 +225,7 @@ function mapPrismaClientToRecord(
     phone: undefined,
   }))
 
-  const documents: ClientDocument[] = (c.documents || []).map((d: any) => ({
+  const documents: ClientDocument[] = (c.documents || []).map((d) => ({
     id: d.id,
     type: d.documentType?.name || "Lain-lain",
     fileName: d.fileName,
@@ -359,7 +384,7 @@ export async function listClients(
   await seedInitialClientsIfEmpty()
 
   const { search, cob, status } = params
-  const whereAnd: any[] = []
+  const whereAnd: Prisma.ClientWhereInput[] = []
 
   if (search && search.trim()) {
     const q = search.trim()

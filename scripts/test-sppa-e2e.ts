@@ -197,8 +197,8 @@ async function runTests() {
   let deleteBlocked = false
   try {
     await deleteSppa(created.id)
-  } catch (err: any) {
-    if (err.message.includes("sudah digunakan dalam Placing Slip")) {
+  } catch (err: unknown) {
+    if (err instanceof Error && err.message.includes("sudah digunakan dalam Placing Slip")) {
       deleteBlocked = true
     }
   }

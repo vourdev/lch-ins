@@ -127,7 +127,7 @@ async function runTests() {
   let cobDeleteFailedAsExpected = false
   try {
     await deleteCob(newCob.id, admin.id)
-  } catch (err: unknown) {
+  } catch {
     cobDeleteFailedAsExpected = true
   }
   assert(cobDeleteFailedAsExpected, "Deleting COB with existing Cover Types rejected by reference guard")

@@ -1,6 +1,6 @@
 import "server-only"
 
-import { Prisma } from "@/lib/generated/prisma/client"
+import { Prisma, type SppaStatus as PrismaSppaStatus } from "@/lib/generated/prisma/client"
 
 import type {
   ClassOfBusiness as CobType,
@@ -182,7 +182,22 @@ function resolveOccupationId(
   return cache.occupationsByCode.get(code)?.id ?? null
 }
 
-function mapPrismaSppaToRecord(raw: any): SppaRecord {
+type PrismaSppaWithRelations = Prisma.SppaGetPayload<{
+  include: {
+    client: { select: { id: true; name: true; clientType: { select: { name: true } } } }
+    cob: { select: { id: true; code: true; name: true } }
+    coverType: { select: { id: true; code: true; name: true } }
+    occupation: { select: { id: true; code: true; name: true } }
+    placingSlips: {
+      select: { id: true; slipNo: true; status: true }
+    }
+    _count: {
+      select: { placingSlips: true }
+    }
+  }
+}>
+
+function mapPrismaSppaToRecord(raw: PrismaSppaWithRelations): SppaRecord {
   const sumInsuredNum = raw.sumInsured ? Number(raw.sumInsured.toString()) : 0
   const periodStart = raw.periodStart
     ? new Date(raw.periodStart).toISOString().slice(0, 10)
@@ -331,7 +346,7 @@ export async function listSppa(params: ListSppaParams = {}): Promise<SppaRecord[
   }
 
   if (params.status && params.status !== "all") {
-    where.status = params.status as any
+    where.status = params.status as PrismaSppaStatus
   }
 
   if (params.search && params.search.trim()) {

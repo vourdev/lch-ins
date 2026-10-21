@@ -65,13 +65,17 @@ export function InsurersAdjustersTab({
   const [address, setAddress] = React.useState("")
   const [isActive, setIsActive] = React.useState(true)
 
-  React.useEffect(() => {
+  const [prevInsurers, setPrevInsurers] = React.useState(initialInsurers)
+  if (prevInsurers !== initialInsurers) {
+    setPrevInsurers(initialInsurers)
     setInsurers(initialInsurers)
-  }, [initialInsurers])
+  }
 
-  React.useEffect(() => {
+  const [prevAdjusters, setPrevAdjusters] = React.useState(initialAdjusters)
+  if (prevAdjusters !== initialAdjusters) {
+    setPrevAdjusters(initialAdjusters)
     setAdjusters(initialAdjusters)
-  }, [initialAdjusters])
+  }
 
   const filteredInsurers = React.useMemo(() => {
     const q = query.trim().toLowerCase()

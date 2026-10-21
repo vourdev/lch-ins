@@ -70,15 +70,10 @@ export function UserTable({
   currentUserId: string
 }) {
   const router = useRouter()
-  const [users, setUsers] = React.useState<UserSummary[]>(initialUsers)
+  const users = initialUsers
   const [search, setSearch] = React.useState("")
   const [roleFilter, setRoleFilter] = React.useState("all")
   const [statusFilter, setStatusFilter] = React.useState("all")
-
-  // Sync state when initialUsers prop changes from server revalidation
-  React.useEffect(() => {
-    setUsers(initialUsers)
-  }, [initialUsers])
 
   // Dialog states
   const [formOpen, setFormOpen] = React.useState(false)

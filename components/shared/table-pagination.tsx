@@ -34,10 +34,11 @@ export function usePagination<T>(items: T[], initialPageSize = 10) {
   const [page, setPage] = React.useState(1)
   const [pageSize, setPageSize] = React.useState(initialPageSize)
 
-  // Reset to page 1 whenever total items or filtered list changes
-  React.useEffect(() => {
+  const [prevLength, setPrevLength] = React.useState(items.length)
+  if (prevLength !== items.length) {
+    setPrevLength(items.length)
     setPage(1)
-  }, [items.length])
+  }
 
   const totalPages = Math.max(1, Math.ceil(items.length / pageSize))
   const safePage = Math.min(Math.max(1, page), totalPages)

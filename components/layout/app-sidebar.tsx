@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { usePathname, useRouter } from "next/navigation"
+import { usePathname } from "next/navigation"
 import { LogOut } from "lucide-react"
 
 import { NAV_GROUPS } from "@/components/layout/nav-items"
@@ -38,8 +38,6 @@ export function AppSidebar({
   roleCode?: string
   roles?: string[]
 }) {
-  const router = useRouter()
-
   const userRoles =
     roles && roles.length > 0 ? roles : roleCode ? [roleCode] : []
 

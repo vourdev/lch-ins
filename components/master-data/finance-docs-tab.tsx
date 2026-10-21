@@ -79,13 +79,17 @@ export function FinanceDocsTab({
   const [wordingDialogOpen, setWordingDialogOpen] = React.useState(false)
   const [wordingName, setWordingName] = React.useState("")
 
-  React.useEffect(() => {
+  const [prevBankAccounts, setPrevBankAccounts] = React.useState(initialBankAccounts)
+  if (prevBankAccounts !== initialBankAccounts) {
+    setPrevBankAccounts(initialBankAccounts)
     setBankAccounts(initialBankAccounts)
-  }, [initialBankAccounts])
+  }
 
-  React.useEffect(() => {
+  const [prevWordingForms, setPrevWordingForms] = React.useState(initialWordingForms)
+  if (prevWordingForms !== initialWordingForms) {
+    setPrevWordingForms(initialWordingForms)
     setWordingForms(initialWordingForms)
-  }, [initialWordingForms])
+  }
 
   function openAddBank() {
     setEditingBankAcc(null)

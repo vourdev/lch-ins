@@ -3,6 +3,8 @@ import "server-only"
 import { randomBytes } from "node:crypto"
 import { hashPassword } from "better-auth/crypto"
 
+import type { Prisma } from "@/lib/generated/prisma/client"
+
 import {
   ALLOWED_ROLE_CODES,
   validateRoleCodes,
@@ -49,7 +51,7 @@ export async function listUsers(
   await requireAdmin("/users")
 
   const { search, role, status } = params
-  const conditions: any[] = []
+  const conditions: Prisma.UserWhereInput[] = []
 
   if (search && search.trim()) {
     const q = search.trim()
