@@ -2,7 +2,7 @@
 
 - **Tanggal:** 2026-10-22
 - **Branch:** `feat/claim-documents-followups`
-- **PR:** # (diisi setelah PR dibuat)
+- **PR:** #17
 - **Dikerjakan oleh:** ZoD3V dengan Claude Code
 
 ## Latar belakang
