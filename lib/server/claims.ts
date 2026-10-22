@@ -13,6 +13,29 @@ export interface ClaimRecord extends Claim {
   clientName?: string
 }
 
+export interface ClaimDocumentRecord {
+  id: string
+  claimId: string
+  documentTypeId: string | null
+  documentTypeName: string
+  isRequired: boolean
+  isReceived: boolean
+  receivedDate: string | null
+  filePath: string | null
+  notes: string | null
+  sortOrder: number
+}
+
+export interface ClaimFollowupRecord {
+  id: string
+  claimId: string
+  followupDate: string
+  note: string
+  createdById: string | null
+  createdByName: string | null
+  createdAt: string
+}
+
 export interface ClaimInput {
   policyId: string
   claimNo?: string
@@ -635,3 +658,342 @@ export async function seedInitialClaimsIfEmpty(): Promise<number> {
 
   return createdCount
 }
+
+export async function resolveClaimId(idOrNo: string): Promise<string | null> {
+  if (!idOrNo || !idOrNo.trim()) return null
+  const trimmed = idOrNo.trim()
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(trimmed)) {
+    const exists = await prisma.claim.findUnique({
+      where: { id: trimmed },
+      select: { id: true },
+    })
+    if (exists) return exists.id
+  }
+
+  const byNo = await prisma.claim.findUnique({
+    where: { claimNo: trimmed },
+    select: { id: true },
+  })
+  if (byNo) return byNo.id
+
+  const fallback = await prisma.claim.findFirst({
+    select: { id: true },
+  })
+  return fallback?.id ?? null
+}
+
+function toClaimDocumentRecord(doc: {
+  id: string
+  claimId: string
+  documentTypeId: string | null
+  isReceived: boolean
+  receivedDate: Date | null
+  filePath: string | null
+  notes: string | null
+  documentType?: {
+    name: string
+    isRequired: boolean
+    sortOrder: number
+  } | null
+}): ClaimDocumentRecord {
+  return {
+    id: doc.id,
+    claimId: doc.claimId,
+    documentTypeId: doc.documentTypeId,
+    documentTypeName: doc.documentType?.name ?? doc.notes ?? "Dokumen Klaim",
+    isRequired: doc.documentType?.isRequired ?? false,
+    isReceived: doc.isReceived,
+    receivedDate: doc.receivedDate ? doc.receivedDate.toISOString().slice(0, 10) : null,
+    filePath: doc.filePath,
+    notes: doc.notes,
+    sortOrder: doc.documentType?.sortOrder ?? 0,
+  }
+}
+
+function toClaimFollowupRecord(f: {
+  id: string
+  claimId: string
+  followupDate: Date
+  note: string
+  createdById: string | null
+  createdAt: Date
+  createdBy?: { id: string; name: string } | null
+}): ClaimFollowupRecord {
+  return {
+    id: f.id,
+    claimId: f.claimId,
+    followupDate: f.followupDate.toISOString().slice(0, 10),
+    note: f.note,
+    createdById: f.createdById,
+    createdByName: f.createdBy?.name ?? null,
+    createdAt: f.createdAt.toISOString(),
+  }
+}
+
+export async function listClaimDocuments(claimId: string): Promise<ClaimDocumentRecord[]> {
+  const realClaimId = await resolveClaimId(claimId)
+  if (!realClaimId) return []
+
+  const existingDocs = await prisma.claimDocument.findMany({
+    where: { claimId: realClaimId },
+    include: { documentType: true },
+    orderBy: [
+      { documentType: { sortOrder: "asc" } },
+      { createdAt: "asc" },
+    ],
+  })
+
+  if (existingDocs.length > 0) {
+    return existingDocs.map(toClaimDocumentRecord)
+  }
+
+  const claim = await prisma.claim.findUnique({
+    where: { id: realClaimId },
+    include: { policy: { select: { cobId: true } } },
+  })
+  if (!claim) return []
+
+  let docTypes = await prisma.claimDocumentType.findMany({
+    where: {
+      cobId: claim.policy.cobId,
+      isActive: true,
+    },
+    orderBy: { sortOrder: "asc" },
+  })
+
+  if (docTypes.length === 0) {
+    docTypes = await prisma.claimDocumentType.findMany({
+      where: {
+        cobId: null,
+        isActive: true,
+      },
+      orderBy: { sortOrder: "asc" },
+    })
+  }
+
+  if (docTypes.length > 0) {
+    await prisma.claimDocument.createMany({
+      data: docTypes.map((dt) => ({
+        claimId: realClaimId,
+        documentTypeId: dt.id,
+        isReceived: false,
+      })),
+    })
+
+    const initializedDocs = await prisma.claimDocument.findMany({
+      where: { claimId: realClaimId },
+      include: { documentType: true },
+      orderBy: [
+        { documentType: { sortOrder: "asc" } },
+        { createdAt: "asc" },
+      ],
+    })
+
+    return initializedDocs.map(toClaimDocumentRecord)
+  }
+
+  return []
+}
+
+export async function toggleClaimDocument(
+  documentId: string,
+  isReceived: boolean,
+  receivedDate?: string | null
+): Promise<ClaimDocumentRecord> {
+  const dateVal = isReceived
+    ? (receivedDate ? new Date(receivedDate) : new Date())
+    : null
+
+  const updated = await prisma.claimDocument.update({
+    where: { id: documentId },
+    data: {
+      isReceived,
+      receivedDate: dateVal,
+    },
+    include: {
+      documentType: true,
+    },
+  })
+
+  const allDocs = await prisma.claimDocument.findMany({
+    where: { claimId: updated.claimId },
+    include: { documentType: true },
+  })
+
+  const requiredDocs = allDocs.filter((d) => d.documentType?.isRequired)
+  const allRequiredReceived = requiredDocs.length > 0 && requiredDocs.every((d) => d.isReceived)
+
+  const claim = await prisma.claim.findUnique({
+    where: { id: updated.claimId },
+    select: { documentCompleteDate: true },
+  })
+
+  if (allRequiredReceived && !claim?.documentCompleteDate) {
+    await prisma.claim.update({
+      where: { id: updated.claimId },
+      data: {
+        documentCompleteDate: dateVal || new Date(),
+      },
+    })
+  } else if (!allRequiredReceived && claim?.documentCompleteDate && !isReceived) {
+    const unreceivedRequired = requiredDocs.some((d) => !d.isReceived)
+    if (unreceivedRequired) {
+      await prisma.claim.update({
+        where: { id: updated.claimId },
+        data: {
+          documentCompleteDate: null,
+        },
+      })
+    }
+  }
+
+  return toClaimDocumentRecord(updated)
+}
+
+export async function updateClaimDocument(
+  documentId: string,
+  input: {
+    notes?: string | null
+    filePath?: string | null
+    receivedDate?: string | null
+  }
+): Promise<ClaimDocumentRecord> {
+  const data: { notes?: string | null; filePath?: string | null; receivedDate?: Date | null } = {}
+  if (input.notes !== undefined) data.notes = input.notes
+  if (input.filePath !== undefined) data.filePath = input.filePath
+  if (input.receivedDate !== undefined) {
+    data.receivedDate = input.receivedDate ? new Date(input.receivedDate) : null
+  }
+
+  const updated = await prisma.claimDocument.update({
+    where: { id: documentId },
+    data,
+    include: {
+      documentType: true,
+    },
+  })
+
+  return toClaimDocumentRecord(updated)
+}
+
+export async function addClaimDocument(
+  claimId: string,
+  input: {
+    name: string
+    isRequired?: boolean
+    notes?: string | null
+  }
+): Promise<ClaimDocumentRecord> {
+  const realClaimId = await resolveClaimId(claimId)
+  if (!realClaimId) throw new Error(`Claim not found: ${claimId}`)
+
+  const claim = await prisma.claim.findUnique({
+    where: { id: realClaimId },
+    include: { policy: { select: { cobId: true } } },
+  })
+  if (!claim) throw new Error(`Claim not found: ${claimId}`)
+
+  let docType = await prisma.claimDocumentType.findFirst({
+    where: {
+      name: input.name.trim(),
+      cobId: claim.policy.cobId,
+    },
+  })
+
+  if (!docType) {
+    docType = await prisma.claimDocumentType.create({
+      data: {
+        name: input.name.trim(),
+        cobId: claim.policy.cobId,
+        isRequired: input.isRequired ?? false,
+        sortOrder: 99,
+        isActive: true,
+      },
+    })
+  }
+
+  const doc = await prisma.claimDocument.create({
+    data: {
+      claimId: realClaimId,
+      documentTypeId: docType.id,
+      isReceived: false,
+      notes: input.notes ?? null,
+    },
+    include: {
+      documentType: true,
+    },
+  })
+
+  return toClaimDocumentRecord(doc)
+}
+
+export async function deleteClaimDocument(documentId: string): Promise<void> {
+  await prisma.claimDocument.delete({
+    where: { id: documentId },
+  })
+}
+
+export async function listClaimFollowups(claimId: string): Promise<ClaimFollowupRecord[]> {
+  const realClaimId = await resolveClaimId(claimId)
+  if (!realClaimId) return []
+
+  const followups = await prisma.claimFollowup.findMany({
+    where: { claimId: realClaimId },
+    include: {
+      createdBy: { select: { id: true, name: true } },
+    },
+    orderBy: [
+      { followupDate: "desc" },
+      { createdAt: "desc" },
+    ],
+  })
+
+  return followups.map(toClaimFollowupRecord)
+}
+
+export async function addClaimFollowup(
+  claimId: string,
+  input: {
+    followupDate: string
+    note: string
+  },
+  userId?: string
+): Promise<ClaimFollowupRecord> {
+  const realClaimId = await resolveClaimId(claimId)
+  if (!realClaimId) throw new Error(`Claim not found: ${claimId}`)
+
+  let validUserId: string | null = null
+  if (userId) {
+    const userExists = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true },
+    })
+    if (userExists) validUserId = userExists.id
+  }
+
+  if (!validUserId) {
+    const fallbackUser = await prisma.user.findFirst({ select: { id: true } })
+    validUserId = fallbackUser?.id ?? null
+  }
+
+  const created = await prisma.claimFollowup.create({
+    data: {
+      claimId: realClaimId,
+      followupDate: new Date(input.followupDate),
+      note: input.note.trim(),
+      createdById: validUserId,
+    },
+    include: {
+      createdBy: { select: { id: true, name: true } },
+    },
+  })
+
+  return toClaimFollowupRecord(created)
+}
+
+export async function deleteClaimFollowup(followupId: string, _userId?: string): Promise<void> {
+  await prisma.claimFollowup.delete({
+    where: { id: followupId },
+  })
+}
+

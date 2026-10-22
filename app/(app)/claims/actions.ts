@@ -11,10 +11,20 @@ import {
   deleteClaim,
   updateClaim,
   updateClaimStatus,
+  listClaimDocuments,
+  toggleClaimDocument,
+  updateClaimDocument,
+  addClaimDocument,
+  deleteClaimDocument,
+  listClaimFollowups,
+  addClaimFollowup,
+  deleteClaimFollowup,
   type ClaimInput,
   type ClaimRecord,
+  type ClaimDocumentRecord,
+  type ClaimFollowupRecord,
 } from "@/lib/server/claims"
-import { requireManage } from "@/lib/server/session"
+import { requireAccess, requireManage } from "@/lib/server/session"
 
 export interface ActionResponse<T = unknown> {
   ok: boolean
@@ -127,3 +137,145 @@ export async function deleteClaimAction(id: string): Promise<ActionResponse<void
     return { ok: false, error: message }
   }
 }
+
+export async function listClaimDocumentsAction(
+  claimId: string
+): Promise<ActionResponse<ClaimDocumentRecord[]>> {
+  try {
+    await requireAccess("/claims")
+    const docs = await listClaimDocuments(claimId)
+    return { ok: true, data: docs }
+  } catch (err) {
+    unstable_rethrow(err)
+    const message = err instanceof Error ? err.message : "Gagal memuat dokumen klaim"
+    return { ok: false, error: message }
+  }
+}
+
+export async function toggleClaimDocumentAction(
+  documentId: string,
+  isReceived: boolean,
+  receivedDate?: string | null
+): Promise<ActionResponse<ClaimDocumentRecord>> {
+  try {
+    await requireManage("/claims")
+    const doc = await toggleClaimDocument(documentId, isReceived, receivedDate)
+    revalidatePath("/claims")
+    revalidatePath("/")
+    return { ok: true, data: doc }
+  } catch (err) {
+    unstable_rethrow(err)
+    const message = err instanceof Error ? err.message : "Gagal mengubah status penerimaan berkas"
+    return { ok: false, error: message }
+  }
+}
+
+export async function updateClaimDocumentAction(
+  documentId: string,
+  input: {
+    notes?: string | null
+    filePath?: string | null
+    receivedDate?: string | null
+  }
+): Promise<ActionResponse<ClaimDocumentRecord>> {
+  try {
+    await requireManage("/claims")
+    const doc = await updateClaimDocument(documentId, input)
+    revalidatePath("/claims")
+    return { ok: true, data: doc }
+  } catch (err) {
+    unstable_rethrow(err)
+    const message = err instanceof Error ? err.message : "Gagal memperbarui informasi berkas klaim"
+    return { ok: false, error: message }
+  }
+}
+
+export async function addClaimDocumentAction(
+  claimId: string,
+  input: {
+    name: string
+    isRequired?: boolean
+    notes?: string | null
+  }
+): Promise<ActionResponse<ClaimDocumentRecord>> {
+  try {
+    await requireManage("/claims")
+    if (!input.name || !input.name.trim()) {
+      return { ok: false, error: "Nama dokumen wajib diisi" }
+    }
+    const doc = await addClaimDocument(claimId, input)
+    revalidatePath("/claims")
+    return { ok: true, data: doc }
+  } catch (err) {
+    unstable_rethrow(err)
+    const message = err instanceof Error ? err.message : "Gagal menambahkan dokumen klaim"
+    return { ok: false, error: message }
+  }
+}
+
+export async function deleteClaimDocumentAction(
+  documentId: string
+): Promise<ActionResponse<void>> {
+  try {
+    await requireManage("/claims")
+    await deleteClaimDocument(documentId)
+    revalidatePath("/claims")
+    return { ok: true }
+  } catch (err) {
+    unstable_rethrow(err)
+    const message = err instanceof Error ? err.message : "Gagal menghapus berkas klaim"
+    return { ok: false, error: message }
+  }
+}
+
+export async function listClaimFollowupsAction(
+  claimId: string
+): Promise<ActionResponse<ClaimFollowupRecord[]>> {
+  try {
+    await requireAccess("/claims")
+    const list = await listClaimFollowups(claimId)
+    return { ok: true, data: list }
+  } catch (err) {
+    unstable_rethrow(err)
+    const message = err instanceof Error ? err.message : "Gagal memuat catatan follow-up klaim"
+    return { ok: false, error: message }
+  }
+}
+
+export async function addClaimFollowupAction(
+  claimId: string,
+  input: {
+    followupDate: string
+    note: string
+  }
+): Promise<ActionResponse<ClaimFollowupRecord>> {
+  try {
+    const session = await requireManage("/claims")
+    if (!input.note || !input.note.trim()) {
+      return { ok: false, error: "Catatan tindak lanjut wajib diisi" }
+    }
+    const item = await addClaimFollowup(claimId, input, session.id)
+    revalidatePath("/claims")
+    return { ok: true, data: item }
+  } catch (err) {
+    unstable_rethrow(err)
+    const message = err instanceof Error ? err.message : "Gagal menyimpan catatan follow-up klaim"
+    return { ok: false, error: message }
+  }
+}
+
+export async function deleteClaimFollowupAction(
+  followupId: string
+): Promise<ActionResponse<void>> {
+  try {
+    const session = await requireManage("/claims")
+    await deleteClaimFollowup(followupId, session.id)
+    revalidatePath("/claims")
+    return { ok: true }
+  } catch (err) {
+    unstable_rethrow(err)
+    const message = err instanceof Error ? err.message : "Gagal menghapus tindak lanjut klaim"
+    return { ok: false, error: message }
+  }
+}
+
