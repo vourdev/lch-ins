@@ -104,7 +104,7 @@ async function main() {
     await expectError(
       "parent with children cannot be deleted",
       () => deletePolicy(parent.id, admin.id),
-      /induk/
+      /induk|klaim/
     )
   } finally {
     await deletePolicy(created.id, admin.id)

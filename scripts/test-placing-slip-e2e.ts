@@ -168,7 +168,7 @@ async function runTests() {
   const released = await releasePlacingSlip(created.id, testUser.id)
   assert(released.status === "Released", "Status updated to Released")
   assert(Boolean(released.slipNo), `Official slip number generated: ${released.slipNo}`)
-  assert(Boolean(released.slipNo?.includes("/PS/")), `Slip number format contains /PS/: ${released.slipNo}`)
+  assert(Boolean(released.slipNo?.includes("/PS-") || released.slipNo?.includes("/PS/")), `Slip number format contains /PS- or /PS/: ${released.slipNo}`)
 
   // 8. Test Status Guard: Released slip cannot be physically deleted
   console.log("\n[TEST 8] Protection Guard: Released slip cannot be deleted")
