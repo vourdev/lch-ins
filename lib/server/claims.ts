@@ -734,53 +734,8 @@ export async function listClaimDocuments(claimId: string): Promise<ClaimDocument
   const realClaimId = await resolveClaimId(claimId)
   if (!realClaimId) return []
 
-  const existingDocs = await prisma.claimDocument.findMany({
-    where: { claimId: realClaimId },
-    include: { documentType: true },
-    orderBy: [
-      { documentType: { sortOrder: "asc" } },
-      { createdAt: "asc" },
-    ],
-  })
-
-  if (existingDocs.length > 0) {
-    return existingDocs.map(toClaimDocumentRecord)
-  }
-
-  const claim = await prisma.claim.findUnique({
-    where: { id: realClaimId },
-    include: { policy: { select: { cobId: true } } },
-  })
-  if (!claim) return []
-
-  let docTypes = await prisma.claimDocumentType.findMany({
-    where: {
-      cobId: claim.policy.cobId,
-      isActive: true,
-    },
-    orderBy: { sortOrder: "asc" },
-  })
-
-  if (docTypes.length === 0) {
-    docTypes = await prisma.claimDocumentType.findMany({
-      where: {
-        cobId: null,
-        isActive: true,
-      },
-      orderBy: { sortOrder: "asc" },
-    })
-  }
-
-  if (docTypes.length > 0) {
-    await prisma.claimDocument.createMany({
-      data: docTypes.map((dt) => ({
-        claimId: realClaimId,
-        documentTypeId: dt.id,
-        isReceived: false,
-      })),
-    })
-
-    const initializedDocs = await prisma.claimDocument.findMany({
+  try {
+    const existingDocs = await prisma.claimDocument.findMany({
       where: { claimId: realClaimId },
       include: { documentType: true },
       orderBy: [
@@ -789,10 +744,62 @@ export async function listClaimDocuments(claimId: string): Promise<ClaimDocument
       ],
     })
 
-    return initializedDocs.map(toClaimDocumentRecord)
-  }
+    if (existingDocs.length > 0) {
+      return existingDocs.map(toClaimDocumentRecord)
+    }
 
-  return []
+    const claim = await prisma.claim.findUnique({
+      where: { id: realClaimId },
+      include: { policy: { select: { cobId: true } } },
+    })
+    if (!claim) return []
+
+    let docTypes = await prisma.claimDocumentType.findMany({
+      where: {
+        cobId: claim.policy.cobId,
+        isActive: true,
+      },
+      orderBy: { sortOrder: "asc" },
+    })
+
+    if (docTypes.length === 0) {
+      docTypes = await prisma.claimDocumentType.findMany({
+        where: {
+          cobId: null,
+          isActive: true,
+        },
+        orderBy: { sortOrder: "asc" },
+      })
+    }
+
+    if (docTypes.length > 0) {
+      await prisma.claimDocument.createMany({
+        data: docTypes.map((dt) => ({
+          claimId: realClaimId,
+          documentTypeId: dt.id,
+          isReceived: false,
+        })),
+      })
+
+      const initializedDocs = await prisma.claimDocument.findMany({
+        where: { claimId: realClaimId },
+        include: { documentType: true },
+        orderBy: [
+          { documentType: { sortOrder: "asc" } },
+          { createdAt: "asc" },
+        ],
+      })
+
+      return initializedDocs.map(toClaimDocumentRecord)
+    }
+
+    return []
+  } catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2021") {
+      return []
+    }
+    throw err
+  }
 }
 
 export async function toggleClaimDocument(
@@ -937,18 +944,25 @@ export async function listClaimFollowups(claimId: string): Promise<ClaimFollowup
   const realClaimId = await resolveClaimId(claimId)
   if (!realClaimId) return []
 
-  const followups = await prisma.claimFollowup.findMany({
-    where: { claimId: realClaimId },
-    include: {
-      createdBy: { select: { id: true, name: true } },
-    },
-    orderBy: [
-      { followupDate: "desc" },
-      { createdAt: "desc" },
-    ],
-  })
+  try {
+    const followups = await prisma.claimFollowup.findMany({
+      where: { claimId: realClaimId },
+      include: {
+        createdBy: { select: { id: true, name: true } },
+      },
+      orderBy: [
+        { followupDate: "desc" },
+        { createdAt: "desc" },
+      ],
+    })
 
-  return followups.map(toClaimFollowupRecord)
+    return followups.map(toClaimFollowupRecord)
+  } catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2021") {
+      return []
+    }
+    throw err
+  }
 }
 
 export async function addClaimFollowup(

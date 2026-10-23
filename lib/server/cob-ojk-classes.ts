@@ -15,7 +15,14 @@ function duplicateNameError(err: unknown, name: string) {
 }
 
 export async function listCobOjkClasses(): Promise<CobOjkClassRecord[]> {
-  return prisma.cobOjkClass.findMany({ include: withPolicyCount, orderBy: { name: "asc" } })
+  try {
+    return await prisma.cobOjkClass.findMany({ include: withPolicyCount, orderBy: { name: "asc" } })
+  } catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2021") {
+      return []
+    }
+    throw err
+  }
 }
 
 export async function createCobOjkClass(name: string, userId: string): Promise<CobOjkClassRecord> {
