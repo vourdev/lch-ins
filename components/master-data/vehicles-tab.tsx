@@ -54,14 +54,12 @@ export function VehiclesTab({ initialBrands }: VehiclesTabProps) {
   const [expandedBrandIds, setExpandedBrandIds] = React.useState<Record<string, boolean>>({})
   const [isPending, startTransition] = React.useTransition()
 
-  // Modal Merek
   const [brandDialogOpen, setBrandDialogOpen] = React.useState(false)
   const [editingBrand, setEditingBrand] = React.useState<VehicleBrandRecord | null>(null)
   const [brandName, setBrandName] = React.useState("")
   const [brandSortOrder, setBrandSortOrder] = React.useState("0")
   const [brandIsActive, setBrandIsActive] = React.useState(true)
 
-  // Modal Tipe
   const [typeDialogOpen, setTypeDialogOpen] = React.useState(false)
   const [parentBrand, setParentBrand] = React.useState<VehicleBrandRecord | null>(null)
   const [editingType, setEditingType] = React.useState<VehicleTypeRecord | null>(null)
@@ -340,7 +338,6 @@ export function VehiclesTab({ initialBrands }: VehiclesTabProps) {
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Toolbar */}
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-card p-3.5 shadow-xs">
         <SearchInput
           value={query}
@@ -354,7 +351,6 @@ export function VehiclesTab({ initialBrands }: VehiclesTabProps) {
         </Button>
       </div>
 
-      {/* Brands Table */}
       <Card className="gap-0 overflow-hidden py-0">
         <Table className="min-w-180">
           <TableHeader>
@@ -392,6 +388,7 @@ export function VehiclesTab({ initialBrands }: VehiclesTabProps) {
                           onClick={() => toggleExpand(brand.id)}
                           className="size-6 text-muted-foreground hover:text-foreground"
                           title="Lihat Tipe Kendaraan"
+                          aria-label={isExpanded ? `Tutup tipe ${brand.name}` : `Buka tipe ${brand.name}`}
                         >
                           {isExpanded ? (
                             <ChevronDown className="size-3.5" />
@@ -433,6 +430,7 @@ export function VehiclesTab({ initialBrands }: VehiclesTabProps) {
                             onClick={() => openEditBrand(brand)}
                             className="size-7 text-muted-foreground hover:text-foreground"
                             title="Edit Merek"
+                            aria-label={`Edit merek ${brand.name}`}
                           >
                             <Edit2 className="size-3.5" />
                           </Button>
@@ -441,6 +439,7 @@ export function VehiclesTab({ initialBrands }: VehiclesTabProps) {
                             onCheckedChange={() => handleToggleBrand(brand.id, brand.isActive)}
                             disabled={isPending}
                             title={brand.isActive ? "Nonaktifkan Merek" : "Aktifkan Merek"}
+                            aria-label={`Status merek ${brand.name}`}
                             className="scale-75"
                           />
                           <Button
@@ -456,6 +455,7 @@ export function VehiclesTab({ initialBrands }: VehiclesTabProps) {
                                   ? "Hapus dulu semua tipe di merek ini"
                                   : "Hapus Merek"
                             }
+                            aria-label={`Hapus merek ${brand.name}`}
                           >
                             <Trash2 className="size-3.5" />
                           </Button>
@@ -463,7 +463,6 @@ export function VehiclesTab({ initialBrands }: VehiclesTabProps) {
                       </TableCell>
                     </TableRow>
 
-                    {/* Sub-Types Rows */}
                     {isExpanded && (
                       <TableRow className="bg-muted/15 hover:bg-muted/20">
                         <TableCell colSpan={7} className="p-0 pl-12 pr-4 py-3">
@@ -477,6 +476,7 @@ export function VehiclesTab({ initialBrands }: VehiclesTabProps) {
                                 variant="outline"
                                 onClick={() => openAddType(brand)}
                                 className="h-7 gap-1 text-xs"
+                                aria-label={`Tambah tipe untuk merek ${brand.name}`}
                               >
                                 <Plus className="size-3" />
                                 Tambah Tipe
@@ -512,6 +512,7 @@ export function VehiclesTab({ initialBrands }: VehiclesTabProps) {
                                         onClick={() => openEditType(brand, type)}
                                         className="size-6 text-muted-foreground hover:text-foreground"
                                         title="Edit Tipe"
+                                        aria-label={`Edit tipe ${type.name}`}
                                       >
                                         <Edit2 className="size-3" />
                                       </Button>
@@ -525,6 +526,7 @@ export function VehiclesTab({ initialBrands }: VehiclesTabProps) {
                                         title={
                                           type.isActive ? "Nonaktifkan Tipe" : "Aktifkan Tipe"
                                         }
+                                        aria-label={`Status tipe ${type.name}`}
                                       />
                                       <Button
                                         variant="ghost"
@@ -537,6 +539,7 @@ export function VehiclesTab({ initialBrands }: VehiclesTabProps) {
                                             ? "Tidak dapat dihapus karena sudah dipakai transaksi"
                                             : "Hapus Tipe"
                                         }
+                                        aria-label={`Hapus tipe ${type.name}`}
                                       >
                                         <Trash2 className="size-3" />
                                       </Button>
@@ -557,7 +560,6 @@ export function VehiclesTab({ initialBrands }: VehiclesTabProps) {
         </Table>
       </Card>
 
-      {/* Dialog Merek */}
       <Dialog open={brandDialogOpen} onOpenChange={setBrandDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -603,7 +605,11 @@ export function VehiclesTab({ initialBrands }: VehiclesTabProps) {
 
             <div className="flex items-center justify-between rounded-lg border p-2.5">
               <span className="text-xs font-medium">Status Aktif Operasional</span>
-              <Switch checked={brandIsActive} onCheckedChange={setBrandIsActive} />
+              <Switch
+                checked={brandIsActive}
+                onCheckedChange={setBrandIsActive}
+                aria-label="Status aktif merek"
+              />
             </div>
           </div>
 
@@ -630,7 +636,6 @@ export function VehiclesTab({ initialBrands }: VehiclesTabProps) {
         </DialogContent>
       </Dialog>
 
-      {/* Dialog Tipe */}
       <Dialog open={typeDialogOpen} onOpenChange={setTypeDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -660,7 +665,11 @@ export function VehiclesTab({ initialBrands }: VehiclesTabProps) {
 
             <div className="flex items-center justify-between rounded-lg border p-2.5">
               <span className="text-xs font-medium">Status Aktif Operasional</span>
-              <Switch checked={typeIsActive} onCheckedChange={setTypeIsActive} />
+              <Switch
+                checked={typeIsActive}
+                onCheckedChange={setTypeIsActive}
+                aria-label="Status aktif tipe"
+              />
             </div>
           </div>
 
