@@ -2,7 +2,7 @@
 
 - **Tanggal:** 2026-10-24
 - **Branch:** `feat/password-default-pengguna-baru`
-- **PR:** (isi setelah PR dibuka)
+- **PR:** [#19](https://github.com/vourdev/lch-ins/pull/19)
 - **Dikerjakan oleh:** ZoD3V dengan Claude Code
 
 ## Latar belakang
