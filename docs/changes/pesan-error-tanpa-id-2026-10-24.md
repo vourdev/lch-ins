@@ -2,7 +2,7 @@
 
 - **Tanggal:** 2026-10-24
 - **Branch:** `fix/pesan-error-tanpa-id`
-- **PR:** belum dibuka
+- **PR:** [#24](https://github.com/vourdev/lch-ins/pull/24)
 - **Dikerjakan oleh:** ZoD3V dengan Claude Code
 
 ## Latar belakang
