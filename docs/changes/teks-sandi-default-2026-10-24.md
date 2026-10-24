@@ -2,7 +2,7 @@
 
 - **Tanggal:** 2026-10-24
 - **Branch:** `fix/teks-sandi-default`
-- **PR:** (isi setelah PR dibuka)
+- **PR:** [#20](https://github.com/vourdev/lch-ins/pull/20)
 - **Dikerjakan oleh:** ZoD3V dengan Claude Code
 
 ## Latar belakang
