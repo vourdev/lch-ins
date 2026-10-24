@@ -54,8 +54,8 @@ export function TemporaryPasswordDialog({
             <DialogTitle>{title}</DialogTitle>
           </div>
           <DialogDescription>
-            Kredensial sementara untuk akun <strong>{email}</strong>. Berikan
-            kata sandi ini secara aman kepada pengguna.
+            Sandi awal untuk akun <strong>{email}</strong>. Berikan kata sandi
+            ini secara aman kepada pengguna.
           </DialogDescription>
         </DialogHeader>
 
@@ -88,9 +88,8 @@ export function TemporaryPasswordDialog({
           <div className="flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-900 dark:text-amber-200">
             <ShieldAlert className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400" />
             <p>
-              Kata sandi ini hanya ditampilkan satu kali di layar ini. Pengguna
-              akan <strong>diwajibkan mengganti kata sandi</strong> saat pertama
-              kali masuk ke sistem.
+              Pengguna akan <strong>diwajibkan mengganti kata sandi</strong>{" "}
+              saat pertama kali masuk ke sistem.
             </p>
           </div>
         </div>
