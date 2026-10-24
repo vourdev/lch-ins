@@ -169,7 +169,7 @@ export function UserTable({
         password: res.data.temporaryPassword,
         title: "Kata Sandi Berhasil Direset",
       })
-      toast.success("Kata sandi berhasil direset ke kata sandi sementara.")
+      toast.success("Kata sandi berhasil direset ke sandi awal.")
       router.refresh()
     } catch (err: unknown) {
       const msg =
@@ -192,7 +192,7 @@ export function UserTable({
         confirm: {
           title: `Reset kata sandi ${user.name}?`,
           description:
-            "Sistem akan membuat kata sandi sementara baru, mencabut seluruh sesi aktif pengguna, dan mewajibkan pengguna mengganti kata sandi saat pertama kali masuk.",
+            "Kata sandi akan dikembalikan ke sandi awal Default1234, seluruh sesi aktif pengguna dicabut, dan pengguna wajib menggantinya saat masuk.",
           actionLabel: "Reset Kata Sandi",
         },
         onSelect: () => handleResetPassword(user),
