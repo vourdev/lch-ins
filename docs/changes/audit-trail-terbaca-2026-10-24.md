@@ -2,7 +2,7 @@
 
 - **Tanggal:** 2026-10-24
 - **Branch:** `fix/audit-trail-terbaca`
-- **PR:** belum dibuka
+- **PR:** [#22](https://github.com/vourdev/lch-ins/pull/22)
 - **Dikerjakan oleh:** ZoD3V dengan Claude Code
 
 ## Latar belakang
