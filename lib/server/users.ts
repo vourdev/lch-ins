@@ -1,6 +1,5 @@
 import "server-only"
 
-import { randomBytes } from "node:crypto"
 import { hashPassword } from "better-auth/crypto"
 
 import type { Prisma } from "@/lib/generated/prisma/client"
@@ -33,19 +32,10 @@ export interface ListUsersParams {
 }
 
 /**
- * Sandi awal seragam untuk pengguna baru. Aman karena mustChangePassword
- * memaksa ganti sandi saat login pertama, dan sandi baru tidak boleh sama.
+ * Sandi awal seragam untuk pengguna baru dan reset sandi. Aman karena
+ * mustChangePassword memaksa ganti sandi saat login, dan sandi baru tidak boleh sama.
  */
 const DEFAULT_USER_PASSWORD = "Default1234"
-
-/**
- * Buat kata sandi acak sementara yang kuat dan memenuhi standar keamanan.
- * Terdiri dari 16 karakter alfanumerik + karakter khusus.
- */
-function generateTemporaryPassword(): string {
-  const base = randomBytes(12).toString("base64url").slice(0, 14)
-  return `${base}A1!`
-}
 
 /**
  * Mengambil daftar pengguna dengan filter dan pencarian.
@@ -482,7 +472,7 @@ export async function toggleUserStatus(
 }
 
 /**
- * Mereset kata sandi pengguna ke kata sandi sementara baru,
+ * Mereset kata sandi pengguna ke sandi awal DEFAULT_USER_PASSWORD,
  * menandai mustChangePassword = true, dan mencabut sesi lama.
  * Wajib Admin.
  */
@@ -498,7 +488,7 @@ export async function resetUserPassword(id: string): Promise<{
     throw new Error("Pengguna tidak ditemukan.")
   }
 
-  const temporaryPassword = generateTemporaryPassword()
+  const temporaryPassword = DEFAULT_USER_PASSWORD
   const passwordHash = await hashPassword(temporaryPassword)
 
   await prisma.$transaction(async (tx) => {
