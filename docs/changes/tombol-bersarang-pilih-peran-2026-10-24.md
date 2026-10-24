@@ -2,7 +2,7 @@
 
 - **Tanggal:** 2026-10-24
 - **Branch:** `fix/tombol-bersarang-pilih-peran`
-- **PR:** (diisi setelah PR dibuka)
+- **PR:** [#21](https://github.com/vourdev/lch-ins/pull/21)
 - **Dikerjakan oleh:** ZoD3V dengan Claude Code
 
 ## Latar belakang
