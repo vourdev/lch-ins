@@ -29,7 +29,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import type { Sppa } from "@/lib/data"
+import type { Sppa, VehicleBrandOption } from "@/lib/data"
 import type { SppaRecord } from "@/lib/server/sppa"
 import type { ExportSpec } from "@/lib/export"
 import { dateShort, money } from "@/lib/format"
@@ -40,12 +40,14 @@ export interface SppaTableProps {
   /** Batasi ke satu klien (dipakai di halaman detail klien). */
   clientId?: string
   compact?: boolean
+  vehicleOptions?: VehicleBrandOption[]
 }
 
 export function SppaTable({
   initialSppa,
   clientId,
   compact,
+  vehicleOptions,
 }: SppaTableProps) {
   const all = useCollection("sppa")
   const slips = useCollection("slips")
@@ -276,6 +278,7 @@ export function SppaTable({
           }}
           sppa={form.sppa}
           clientId={clientId}
+          vehicleOptions={vehicleOptions}
         />
       ) : null}
     </div>

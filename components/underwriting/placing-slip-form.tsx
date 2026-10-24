@@ -103,6 +103,7 @@ import {
   type ClassOfBusiness,
   type PlacingSlip,
   type RateException,
+  type VehicleBrandOption,
 } from "@/lib/data"
 import { BI_SCALE_OJK } from "@/lib/data/ojk-tariff"
 import { money, percent } from "@/lib/format"
@@ -140,10 +141,12 @@ export function PlacingSlipForm({
   id,
   initial,
   mode,
+  vehicleOptions,
 }: {
   id?: string
   initial: PlacingSlip | null
   mode: "new" | "edit"
+  vehicleOptions?: VehicleBrandOption[]
 }) {
   const stored = useRecord("slips", id ?? null)
   const source = stored ?? initial
@@ -167,15 +170,24 @@ export function PlacingSlipForm({
       </PageShell>
     )
   }
-  return <SlipEditor key={source.id} initial={source} mode={mode} />
+  return (
+    <SlipEditor
+      key={source.id}
+      initial={source}
+      mode={mode}
+      vehicleOptions={vehicleOptions}
+    />
+  )
 }
 
 function SlipEditor({
   initial,
   mode,
+  vehicleOptions,
 }: {
   initial: PlacingSlip
   mode: "new" | "edit"
+  vehicleOptions?: VehicleBrandOption[]
 }) {
   const router = useRouter()
   const today = useToday()
@@ -819,10 +831,15 @@ function SlipEditor({
                 <LineItemList
                   items={slip.interestItems}
                   onChange={(items) => set({ interestItems: items })}
-                  descPlaceholder="Deskripsi objek pertanggungan"
+                  descPlaceholder={
+                    isMotor
+                      ? "Tahun, No. Polisi, No. Rangka / Mesin, Penggunaan"
+                      : "Deskripsi objek pertanggungan"
+                  }
                   amountPlaceholder="Nilai"
                   multiline
-                  addLabel="Tambah interest"
+                  addLabel={isMotor ? "Tambah kendaraan" : "Tambah interest"}
+                  vehicleOptions={isMotor ? vehicleOptions : undefined}
                 />
                 <TotalBar
                   label="Total Interest Insured"

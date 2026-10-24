@@ -41,9 +41,10 @@ export const SPPA_QUESTIONS: Partial<
   ],
   "Motor Vehicle": [
     {
-      key: "vehicle",
-      label: "Merk, tipe, dan tahun",
-      placeholder: "Toyota Innova Zenix 2023",
+      key: "year",
+      label: "Tahun pembuatan",
+      placeholder: "2023",
+      digitsOnly: true,
     },
     { key: "plate", label: "Nomor polisi", placeholder: "B 1234 XYZ" },
     { key: "chassis", label: "Nomor rangka dan mesin" },
@@ -119,7 +120,7 @@ export const SPPA: Sppa[] = [
     periodStart: "2026-09-21",
     periodEnd: "2027-09-21",
     answers: {
-      vehicle: "Toyota Innova Zenix Hybrid 2023",
+      year: "2023",
       plate: "B 1872 HMY",
       usage: "Pribadi",
     },

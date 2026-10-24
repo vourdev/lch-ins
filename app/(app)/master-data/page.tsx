@@ -3,6 +3,7 @@ import type { Metadata } from "next"
 import { PageHeader, PageShell } from "@/components/layout/page-header"
 import { MasterDataTabs } from "@/components/master-data/master-data-tabs"
 import { listCobOjkClasses } from "@/lib/server/cob-ojk-classes"
+import { listVehicleBrandsMaster } from "@/lib/server/vehicles"
 import {
   listAdjusters,
   listBankAccounts,
@@ -41,6 +42,7 @@ export default async function MasterDataPage() {
     lookups,
     lookupTypes,
     cobOjkClasses,
+    vehicleBrands,
   ] = await Promise.all([
     listMasterCob(),
     listLookupValues("rate_mode"),
@@ -58,6 +60,7 @@ export default async function MasterDataPage() {
     listLookupValues(),
     listDistinctLookupTypes(),
     listCobOjkClasses(),
+    listVehicleBrandsMaster(),
   ])
 
   return (
@@ -81,6 +84,7 @@ export default async function MasterDataPage() {
         initialCurrencies={currencies}
         initialWordingForms={wordingForms}
         initialCobOjkClasses={cobOjkClasses}
+        initialVehicleBrands={vehicleBrands}
         banks={banks}
         initialLookups={lookups}
         availableLookupTypes={lookupTypes}

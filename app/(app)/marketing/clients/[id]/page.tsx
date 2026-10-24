@@ -4,6 +4,7 @@ import { PageShell } from "@/components/layout/page-header"
 import { ClientDetail } from "@/components/marketing/client-detail"
 import { getClientById } from "@/lib/server/clients"
 import { listSppa } from "@/lib/server/sppa"
+import { listVehicleOptions } from "@/lib/server/vehicles"
 import { requireAccess } from "@/lib/server/session"
 
 export async function generateMetadata({
@@ -25,9 +26,10 @@ export default async function ClientDetailPage({
 }) {
   await requireAccess("/marketing")
   const { id } = await params
-  const [client, initialSppa] = await Promise.all([
+  const [client, initialSppa, vehicleOptions] = await Promise.all([
     getClientById(id),
     listSppa({ clientId: id }),
+    listVehicleOptions(),
   ])
 
   return (
@@ -36,6 +38,7 @@ export default async function ClientDetailPage({
         id={id}
         initialClient={client}
         initialSppa={initialSppa}
+        vehicleOptions={vehicleOptions}
       />
     </PageShell>
   )

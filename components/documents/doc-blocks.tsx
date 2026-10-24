@@ -144,17 +144,30 @@ export function InterestBlock({ slip }: { slip: PlacingSlip }) {
         </div>
       ) : (
         <ul className="flex flex-col gap-2 text-[13px]">
-          {slip.interestItems.map((i) => (
-            <li
-              key={i.id}
-              className="flex justify-between gap-6 border-b border-dashed py-1"
-            >
-              <span className="leading-relaxed">{i.description}</span>
-              <span className="tabular whitespace-nowrap">
-                {money(i.amount, slip.currency)}
-              </span>
-            </li>
-          ))}
+          {slip.interestItems.map((i) => {
+            const vehicleLabel = [i.vehicleBrandName, i.vehicleTypeName]
+              .filter(Boolean)
+              .join(" ")
+            return (
+              <li
+                key={i.id}
+                className="flex justify-between gap-6 border-b border-dashed py-1"
+              >
+                <span className="leading-relaxed">
+                  {vehicleLabel ? (
+                    <span className="font-semibold text-foreground mr-1.5">
+                      {vehicleLabel}
+                      {i.description ? " —" : ""}
+                    </span>
+                  ) : null}
+                  {i.description}
+                </span>
+                <span className="tabular whitespace-nowrap">
+                  {money(i.amount, slip.currency)}
+                </span>
+              </li>
+            )
+          })}
         </ul>
       )}
 

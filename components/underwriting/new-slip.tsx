@@ -10,6 +10,7 @@ import {
 } from "@/components/underwriting/slip-model"
 import type { ClientRecord } from "@/lib/server/clients"
 import type { SppaRecord } from "@/lib/server/sppa"
+import type { VehicleBrandOption } from "@/lib/data"
 import { store } from "@/lib/store"
 
 /**
@@ -22,11 +23,13 @@ export function NewSlip({
   clientId,
   initialSppa,
   initialClient,
+  vehicleOptions,
 }: {
   sppaId?: string
   clientId?: string
   initialSppa?: SppaRecord
   initialClient?: ClientRecord
+  vehicleOptions?: VehicleBrandOption[]
 }) {
   React.useEffect(() => {
     if (initialSppa) store.upsert("sppa", initialSppa)
@@ -47,5 +50,5 @@ export function NewSlip({
       null
     return client ? slipForClient(client) : emptySlip()
   })
-  return <PlacingSlipForm initial={initial} mode="new" />
+  return <PlacingSlipForm initial={initial} mode="new" vehicleOptions={vehicleOptions} />
 }

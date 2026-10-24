@@ -3,6 +3,7 @@
 import * as React from "react"
 import {
   Building2,
+  Car,
   Coins,
   Layers,
   ListFilter,
@@ -16,6 +17,7 @@ import { FinanceDocsTab } from "@/components/master-data/finance-docs-tab"
 import { InsurersAdjustersTab } from "@/components/master-data/insurers-adjusters-tab"
 import { LookupValuesTab } from "@/components/master-data/lookup-values-tab"
 import { TariffOjkTab } from "@/components/master-data/tariff-ojk-tab"
+import { VehiclesTab } from "@/components/master-data/vehicles-tab"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import type {
   Adjuster,
@@ -33,6 +35,7 @@ import type {
   OccupationRecord,
 } from "@/lib/server/master-data"
 import type { CobOjkClassRecord } from "@/lib/server/cob-ojk-classes"
+import type { VehicleBrandRecord } from "@/lib/server/vehicles"
 
 export interface MasterDataTabsProps {
   initialCobs: MasterCobRecord[]
@@ -48,6 +51,7 @@ export interface MasterDataTabsProps {
   initialCurrencies: Currency[]
   initialWordingForms: WordingForm[]
   initialCobOjkClasses: CobOjkClassRecord[]
+  initialVehicleBrands: VehicleBrandRecord[]
   banks: LookupValue[]
   initialLookups: LookupValue[]
   availableLookupTypes: string[]
@@ -67,6 +71,7 @@ export function MasterDataTabs({
   initialCurrencies,
   initialWordingForms,
   initialCobOjkClasses,
+  initialVehicleBrands,
   banks,
   initialLookups,
   availableLookupTypes,
@@ -100,6 +105,11 @@ export function MasterDataTabs({
           <TabsTrigger value="finance-docs" className="gap-1.5 px-3 text-xs">
             <Coins className="size-3.5" />
             Keuangan & Wording ({initialBankAccounts.length + initialWordingForms.length})
+          </TabsTrigger>
+
+          <TabsTrigger value="vehicles" className="gap-1.5 px-3 text-xs">
+            <Car className="size-3.5" />
+            Kendaraan ({initialVehicleBrands.length})
           </TabsTrigger>
 
           <TabsTrigger value="lookups" className="gap-1.5 px-3 text-xs">
@@ -144,6 +154,10 @@ export function MasterDataTabs({
           initialWordingForms={initialWordingForms}
           banks={banks}
         />
+      </TabsContent>
+
+      <TabsContent value="vehicles" className="space-y-4">
+        <VehiclesTab initialBrands={initialVehicleBrands} />
       </TabsContent>
 
       <TabsContent value="lookups" className="space-y-4">

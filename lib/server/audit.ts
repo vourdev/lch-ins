@@ -51,6 +51,8 @@ type RefModel =
   | "cobOjkClass"
   | "bankAccount"
   | "lookupValue"
+  | "vehicleBrand"
+  | "vehicleType"
 
 const ENTITY_MODEL: Record<string, RefModel> = {
   users: "user",
@@ -67,6 +69,8 @@ const ENTITY_MODEL: Record<string, RefModel> = {
   cob_ojk_classes: "cobOjkClass",
   bank_accounts: "bankAccount",
   lookup_values: "lookupValue",
+  vehicle_brands: "vehicleBrand",
+  vehicle_types: "vehicleType",
 }
 
 /** Foreign keys that do not point at lookup_values; every other `*Id` key does. */
@@ -92,6 +96,9 @@ const FIELD_MODEL: Record<string, RefModel> = {
   wordingFormId: "wordingForm",
   cobOjkClassId: "cobOjkClass",
   bankAccountId: "bankAccount",
+  vehicleBrandId: "vehicleBrand",
+  brandId: "vehicleBrand",
+  vehicleTypeId: "vehicleType",
 }
 
 const UUID_PATTERN =
@@ -177,6 +184,17 @@ const NAME_RESOLVERS: Record<RefModel, (ids: string[]) => NamePairs> = {
     prisma.lookupValue
       .findMany({ where: { id: { in: ids } }, select: { id: true, name: true } })
       .then((rows) => rows.map((r) => [r.id, r.name])),
+  vehicleBrand: (ids) =>
+    prisma.vehicleBrand
+      .findMany({ where: { id: { in: ids } }, select: { id: true, name: true } })
+      .then((rows) => rows.map((r) => [r.id, r.name])),
+  vehicleType: (ids) =>
+    prisma.vehicleType
+      .findMany({
+        where: { id: { in: ids } },
+        select: { id: true, name: true, brand: { select: { name: true } } },
+      })
+      .then((rows) => rows.map((r) => [r.id, `${r.brand.name} ${r.name}`])),
 }
 
 function refModelFor(key: string): RefModel | null {
