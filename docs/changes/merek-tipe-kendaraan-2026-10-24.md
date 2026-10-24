@@ -2,7 +2,7 @@
 
 - **Tanggal:** 2026-10-24
 - **Branch:** `feat/merek-tipe-kendaraan`
-- **PR:** (akan diisi setelah PR dibuka)
+- **PR:** #25
 - **Dikerjakan oleh:** Antigravity dengan Claude Code
 
 ## Latar belakang
