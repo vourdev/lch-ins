@@ -33,6 +33,12 @@ export interface ListUsersParams {
 }
 
 /**
+ * Sandi awal seragam untuk pengguna baru. Aman karena mustChangePassword
+ * memaksa ganti sandi saat login pertama, dan sandi baru tidak boleh sama.
+ */
+const DEFAULT_USER_PASSWORD = "Default1234"
+
+/**
  * Buat kata sandi acak sementara yang kuat dan memenuhi standar keamanan.
  * Terdiri dari 16 karakter alfanumerik + karakter khusus.
  */
@@ -177,7 +183,7 @@ export async function createUser(data: CreateUserInput): Promise<{
     throw new Error(`Email ${email} sudah terdaftar di sistem.`)
   }
 
-  const temporaryPassword = generateTemporaryPassword()
+  const temporaryPassword = DEFAULT_USER_PASSWORD
   const passwordHash = await hashPassword(temporaryPassword)
 
   // Buat pengguna dan akun kredensial Better Auth dalam transaksi
