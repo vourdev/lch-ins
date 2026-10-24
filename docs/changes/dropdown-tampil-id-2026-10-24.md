@@ -2,7 +2,7 @@
 
 - **Tanggal:** 2026-10-24
 - **Branch:** `fix/dropdown-tampil-id`
-- **PR:** belum dibuka
+- **PR:** [#23](https://github.com/vourdev/lch-ins/pull/23)
 - **Dikerjakan oleh:** ZoD3V dengan Claude Code
 
 ## Latar belakang
