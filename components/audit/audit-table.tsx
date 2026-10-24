@@ -2,9 +2,16 @@
 
 import * as React from "react"
 import { Eye, Layers, RotateCcw } from "lucide-react"
-import { toast } from "sonner"
 
 import { AuditDiffDialog } from "@/components/audit/audit-diff-dialog"
+import {
+  ACTION_LABELS,
+  actionLabel,
+  changeSummary,
+  entityLabel,
+  fieldLabel,
+  visibleChangeKeys,
+} from "@/components/audit/audit-fields"
 import { StatusBadge } from "@/components/shared/status-badge"
 import { TableEmpty } from "@/components/shared/table-empty"
 import { TablePagination, usePagination } from "@/components/shared/table-pagination"
@@ -35,23 +42,9 @@ export interface AuditTableProps {
   availableEntities?: string[]
 }
 
-const ENTITY_LABELS: Record<string, string> = {
-  clients: "Database Klien",
-  sppa: "SPPA",
-  users: "Manajemen Pengguna",
-  master_clauses: "Master Klausul",
-  placing_slips: "Placing Slip",
-  policies: "Polis",
-  claims: "Klaim",
-}
-
 const ACTION_OPTIONS = [
   { label: "Semua Aksi", value: "all" },
-  { label: "Tambah (Create)", value: "Create" },
-  { label: "Ubah (Update)", value: "Update" },
-  { label: "Hapus (Delete)", value: "Delete" },
-  { label: "Rilis (Release)", value: "Release" },
-  { label: "Batal (Cancel)", value: "Cancel" },
+  ...Object.entries(ACTION_LABELS).map(([value, label]) => ({ label, value })),
 ]
 
 export function AuditTable({
@@ -72,7 +65,7 @@ export function AuditTable({
     return [
       { label: "Semua Modul", value: "all" },
       ...list.map((ent) => ({
-        label: ENTITY_LABELS[ent.toLowerCase()] ?? ent,
+        label: entityLabel(ent),
         value: ent,
       })),
     ]
@@ -100,20 +93,14 @@ export function AuditTable({
       }
       if (!q) return true
 
-      const matchesText =
-        log.userName.toLowerCase().includes(q) ||
-        log.userEmail.toLowerCase().includes(q) ||
-        (log.userJobTitle && log.userJobTitle.toLowerCase().includes(q)) ||
-        log.entity.toLowerCase().includes(q) ||
-        log.entityId.toLowerCase().includes(q) ||
-        log.id.toLowerCase().includes(q)
-
-      if (matchesText) return true
-
-      if (log.changes) {
-        return Object.keys(log.changes).some((k) => k.toLowerCase().includes(q))
-      }
-      return false
+      return [
+        log.userName,
+        log.userEmail,
+        log.userJobTitle,
+        log.entityLabel,
+        entityLabel(log.entity),
+        ...visibleChangeKeys(log).map(fieldLabel),
+      ].some((text) => text?.toLowerCase().includes(q))
     })
   }, [initialLogs, query, actionFilter, entityFilter, startDate, endDate])
 
@@ -156,27 +143,13 @@ export function AuditTable({
       },
       { header: "Pengguna", value: (l) => `${l.userName} (${l.userEmail})` },
       { header: "Jabatan", value: (l) => l.userJobTitle ?? "—" },
-      { header: "Aksi", value: (l) => l.action },
-      { header: "Modul", value: (l) => ENTITY_LABELS[l.entity.toLowerCase()] ?? l.entity },
-      { header: "Target ID", value: (l) => l.entityId },
-      {
-        header: "Atribut Diubah",
-        value: (l) => (l.changes ? Object.keys(l.changes).join(", ") : "—"),
-      },
+      { header: "Aksi", value: (l) => actionLabel(l.action) },
+      { header: "Modul", value: (l) => entityLabel(l.entity) },
+      { header: "Data", value: (l) => l.entityLabel ?? "—" },
+      { header: "Perubahan", value: (l) => changeSummary(l) },
     ],
   }
 
-  function getChangeSummary(log: AuditLogRecord): string {
-    if (!log.changes) {
-      if (log.action === "Create") return "Data entitas baru dibuat"
-      if (log.action === "Delete") return "Data entitas dihapus"
-      return "Tidak ada rincian atribut"
-    }
-    const keys = Object.keys(log.changes)
-    if (keys.length === 0) return "Tidak ada rincian atribut"
-    if (keys.length <= 3) return `${keys.length} field: ${keys.join(", ")}`
-    return `${keys.length} field: ${keys.slice(0, 3).join(", ")} +${keys.length - 3} lainnya`
-  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -185,7 +158,7 @@ export function AuditTable({
           <SearchInput
             value={query}
             onValueChange={setQuery}
-            placeholder="Cari pengguna, email, atau ID target…"
+            placeholder="Cari pengguna, data, atau perubahan…"
             className="w-full sm:max-w-xs"
           />
 
@@ -208,7 +181,11 @@ export function AuditTable({
         <div className="flex flex-wrap items-center gap-2.5 pt-1 border-t text-xs">
           <div className="flex items-center gap-1.5">
             <span className="text-muted-foreground font-medium">Aksi:</span>
-            <Select value={actionFilter} onValueChange={(val) => setActionFilter(val ?? "all")}>
+            <Select
+              items={ACTION_OPTIONS}
+              value={actionFilter}
+              onValueChange={(val) => setActionFilter(val ?? "all")}
+            >
               <SelectTrigger className="h-8 w-37 text-xs">
                 <SelectValue placeholder="Pilih aksi" />
               </SelectTrigger>
@@ -224,7 +201,11 @@ export function AuditTable({
 
           <div className="flex items-center gap-1.5">
             <span className="text-muted-foreground font-medium">Modul:</span>
-            <Select value={entityFilter} onValueChange={(val) => setEntityFilter(val ?? "all")}>
+            <Select
+              items={entityOptions}
+              value={entityFilter}
+              onValueChange={(val) => setEntityFilter(val ?? "all")}
+            >
               <SelectTrigger className="h-8 w-42 text-xs">
                 <SelectValue placeholder="Pilih modul" />
               </SelectTrigger>
@@ -274,7 +255,7 @@ export function AuditTable({
               <TableHead className="w-52">Pengguna</TableHead>
               <TableHead className="w-24">Aksi</TableHead>
               <TableHead className="w-36">Modul</TableHead>
-              <TableHead className="w-40">ID Target</TableHead>
+              <TableHead className="w-48">Data</TableHead>
               <TableHead>Perubahan</TableHead>
               <TableHead className="w-24 text-right pr-4">Detail</TableHead>
             </TableRow>
@@ -291,8 +272,6 @@ export function AuditTable({
               />
             ) : (
               paginatedRows.map((log) => {
-                const entityLabel =
-                  ENTITY_LABELS[log.entity.toLowerCase()] ?? log.entity
                 return (
                   <TableRow key={log.id} className="text-xs">
                     <TableCell className="tabular text-muted-foreground font-mono">
@@ -315,25 +294,20 @@ export function AuditTable({
                     <TableCell>
                       <span className="inline-flex items-center gap-1 rounded bg-secondary/80 px-1.5 py-0.5 text-[11px] font-medium text-secondary-foreground">
                         <Layers className="size-3 shrink-0" />
-                        <span className="truncate max-w-28">{entityLabel}</span>
+                        <span className="truncate max-w-28">{entityLabel(log.entity)}</span>
                       </span>
                     </TableCell>
                     <TableCell>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          navigator.clipboard.writeText(log.entityId)
-                          toast.success("ID Target disalin ke clipboard")
-                        }}
-                        title={`Salin ID penuh: ${log.entityId}`}
-                        className="font-mono text-xs text-muted-foreground hover:text-primary transition-colors cursor-pointer truncate max-w-36 block text-left"
+                      <p
+                        className="truncate max-w-44 font-medium text-foreground"
+                        title={log.entityLabel ?? undefined}
                       >
-                        {log.entityId.slice(0, 8)}…{log.entityId.slice(-4)}
-                      </button>
+                        {log.entityLabel ?? "—"}
+                      </p>
                     </TableCell>
                     <TableCell className="max-w-64">
-                      <p className="truncate text-muted-foreground" title={getChangeSummary(log)}>
-                        {getChangeSummary(log)}
+                      <p className="truncate text-muted-foreground" title={changeSummary(log)}>
+                        {changeSummary(log)}
                       </p>
                     </TableCell>
                     <TableCell className="text-right pr-4">
