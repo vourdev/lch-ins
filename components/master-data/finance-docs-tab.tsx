@@ -406,7 +406,11 @@ export function FinanceDocsTab({
               <Label htmlFor="bank-select" className="text-xs font-medium">
                 Pilih Bank <span className="text-destructive">*</span>
               </Label>
-              <Select value={bankId} onValueChange={(val) => setBankId(val ?? "")}>
+              <Select
+                items={banks.map((b) => ({ label: b.name, value: b.id }))}
+                value={bankId}
+                onValueChange={(val) => setBankId(val ?? "")}
+              >
                 <SelectTrigger id="bank-select" className="h-8.5 text-xs">
                   <SelectValue placeholder="Pilih bank" />
                 </SelectTrigger>

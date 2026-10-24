@@ -187,11 +187,12 @@ export function PolicyForm({
     formOptions.currencies.map((c) => ({ label: `${c.code} — ${c.name}`, value: c.code })),
     draft.currency
   )
-  const placementItems = formOptions.placementLocations.map((l) => ({
-    label: l.name,
-    value: l.id,
-  }))
-  const ojkClassItems = formOptions.cobOjkClasses.map((c) => ({ label: c.name, value: c.id }))
+  const placementItems = formOptions.placementLocations
+    .filter((l) => l.isActive || l.id === draft.placementLocationId)
+    .map((l) => ({ label: l.name, value: l.id }))
+  const ojkClassItems = formOptions.cobOjkClasses
+    .filter((c) => c.isActive || c.id === draft.cobOjkClassId)
+    .map((c) => ({ label: c.name, value: c.id }))
 
   function fromSlip(slipId: string | null) {
     const slip = slipId ? slips.find((s) => s.id === slipId) : null

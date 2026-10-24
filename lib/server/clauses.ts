@@ -91,18 +91,22 @@ export async function listSourceGroups() {
   return rows.map((r) => r.sourceGroup)
 }
 
+// Inactive options still used by a clause are kept so filters and forms can show their name.
 export async function listCobOptions() {
   return prisma.classOfBusiness.findMany({
-    where: { isActive: true },
-    select: { id: true, name: true, code: true },
+    where: { OR: [{ isActive: true }, { clauses: { some: {} } }] },
+    select: { id: true, name: true, code: true, isActive: true },
     orderBy: { code: "asc" },
   })
 }
 
 export async function listCoverTypeOptions(cobId?: string) {
   return prisma.coverType.findMany({
-    where: { isActive: true, ...(cobId ? { cobId } : {}) },
-    select: { id: true, name: true, code: true, cobId: true },
+    where: {
+      OR: [{ isActive: true }, { clauses: { some: {} } }],
+      ...(cobId ? { cobId } : {}),
+    },
+    select: { id: true, name: true, code: true, cobId: true, isActive: true },
     orderBy: { code: "asc" },
   })
 }

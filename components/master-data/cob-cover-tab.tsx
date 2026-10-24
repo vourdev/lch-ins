@@ -615,7 +615,11 @@ export function CobCoverTab({
               <Label htmlFor="cob-ratemode" className="text-xs font-medium">
                 Satuan Rate Bawaan <span className="text-destructive">*</span>
               </Label>
-              <Select value={cobRateModeId} onValueChange={(val) => setCobRateModeId(val ?? "")}>
+              <Select
+                items={rateModes.map((rm) => ({ label: `${rm.name} (${rm.code})`, value: rm.id }))}
+                value={cobRateModeId}
+                onValueChange={(val) => setCobRateModeId(val ?? "")}
+              >
                 <SelectTrigger id="cob-ratemode" className="h-8.5 text-xs">
                   <SelectValue placeholder="Pilih satuan rate" />
                 </SelectTrigger>
@@ -634,6 +638,7 @@ export function CobCoverTab({
                 Varian Form Placing Slip <span className="text-destructive">*</span>
               </Label>
               <Select
+                items={formVariants.map((fv) => ({ label: `${fv.name} (${fv.code})`, value: fv.id }))}
                 value={cobFormVariantId}
                 onValueChange={(val) => setCobFormVariantId(val ?? "")}
               >

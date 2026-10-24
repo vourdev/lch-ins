@@ -67,6 +67,11 @@ const TYPE_LABELS: Record<string, string> = {
   client_document_type: "Jenis Dokumen Klien",
   security_role: "Posisi Co-Insurance (Leader / Member)",
   role: "Peran Pengguna (Role)",
+  account_type: "Jenis Akun Perkiraan",
+  payment_model: "Model Pembayaran Premi",
+  placement_location: "Lokasi Penempatan",
+  rate_line_kind: "Jenis Baris Rate",
+  reset_period: "Periode Reset Penomoran",
 }
 
 export function LookupValuesTab({
@@ -220,14 +225,18 @@ export function LookupValuesTab({
             <span className="text-xs font-semibold text-muted-foreground whitespace-nowrap">
               Kategori Pilihan:
             </span>
-            <Select value={selectedType} onValueChange={(val) => setSelectedType(val ?? "client_status")}>
+            <Select
+              items={availableTypes.map((t) => ({ label: TYPE_LABELS[t] ?? t, value: t }))}
+              value={selectedType}
+              onValueChange={(val) => setSelectedType(val ?? "client_status")}
+            >
               <SelectTrigger className="h-8.5 w-60 text-xs font-medium">
                 <SelectValue placeholder="Pilih kategori" />
               </SelectTrigger>
               <SelectContent>
                 {availableTypes.map((t) => (
                   <SelectItem key={t} value={t} className="text-xs">
-                    {TYPE_LABELS[t] ?? t} ({t})
+                    {TYPE_LABELS[t] ?? t}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -348,8 +357,7 @@ export function LookupValuesTab({
               {editingLookup ? "Edit Nilai Pilihan" : "Tambah Nilai Pilihan Baru"}
             </DialogTitle>
             <DialogDescription className="text-xs">
-              Kategori: <strong>{TYPE_LABELS[selectedType] ?? selectedType}</strong> (
-              {selectedType})
+              Kategori: <strong>{TYPE_LABELS[selectedType] ?? selectedType}</strong>
             </DialogDescription>
           </DialogHeader>
 

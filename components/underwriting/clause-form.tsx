@@ -63,8 +63,8 @@ export function ClauseForm({
 }: {
   clause?: ClauseFormValue
   mode: "new" | "edit"
-  cobs: { id: string; name: string; code: string }[]
-  coverTypes: { id: string; name: string; code: string; cobId: string }[]
+  cobs: { id: string; name: string; code: string; isActive: boolean }[]
+  coverTypes: { id: string; name: string; code: string; cobId: string; isActive: boolean }[]
   groups: string[]
 }) {
   const router = useRouter()
@@ -87,12 +87,14 @@ export function ClauseForm({
 
   const cobItems = [
     { label: "Berlaku semua class", value: NONE },
-    ...cobs.map((c) => ({ label: c.name, value: c.id })),
+    ...cobs
+      .filter((c) => c.isActive || c.id === cobId)
+      .map((c) => ({ label: c.name, value: c.id })),
   ]
   const coverItems = [
     { label: "Berlaku semua type of cover", value: NONE },
     ...coverTypes
-      .filter((t) => t.cobId === cobId)
+      .filter((t) => t.cobId === cobId && (t.isActive || t.id === coverTypeId))
       .map((t) => ({ label: `${t.code} — ${t.name}`, value: t.id })),
   ]
   const groupItems = [
