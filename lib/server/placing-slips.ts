@@ -216,7 +216,7 @@ async function resolveClientId(clientIdOrMock: string, fallbackInsuredName?: str
   })
   if (firstClient) return firstClient.id
 
-  throw new Error(`Klien "${clientIdOrMock}" tidak ditemukan di database.`)
+  throw new Error("Klien tidak ditemukan di database.")
 }
 
 /**
@@ -1020,7 +1020,7 @@ export async function updatePlacingSlip(
   })
 
   if (!existing) {
-    throw new Error(`Placing Slip dengan ID ${id} tidak ditemukan.`)
+    throw new Error("Placing slip tidak ditemukan.")
   }
 
   if (existing.status === "Cancelled" || existing.status === "Closed") {
@@ -1383,7 +1383,7 @@ export async function releasePlacingSlip(
   })
 
   if (!existing) {
-    throw new Error(`Placing Slip dengan ID ${id} tidak ditemukan.`)
+    throw new Error("Placing slip tidak ditemukan.")
   }
 
   if (existing.status === "Released") {
@@ -1446,7 +1446,7 @@ export async function togglePlacingSlipStatus(
   })
 
   if (!existing) {
-    throw new Error(`Placing Slip dengan ID ${id} tidak ditemukan.`)
+    throw new Error("Placing slip tidak ditemukan.")
   }
 
   if (status === "Released") {
@@ -1492,7 +1492,7 @@ export async function deletePlacingSlip(id: string, userId: string): Promise<voi
   })
 
   if (!existing) {
-    throw new Error(`Placing Slip dengan ID ${id} tidak ditemukan.`)
+    throw new Error("Placing slip tidak ditemukan.")
   }
 
   if (existing._count.policies > 0) {

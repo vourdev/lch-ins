@@ -335,7 +335,7 @@ export function PolicyForm({
             <Link2 className="size-3.5" />
             Terhubung ke placing slip{" "}
             {slips.find((s) => s.id === draft.placingSlipId)?.slipNo ??
-              draft.placingSlipId}
+              policy.placingSlipNo}
           </p>
         ) : null}
 

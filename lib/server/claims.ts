@@ -364,7 +364,7 @@ export async function updateClaim(
       include: claimIncludeRelations,
     })
     if (!existing) {
-      throw new Error(`Klaim dengan ID "${id}" tidak ditemukan.`)
+      throw new Error("Klaim tidak ditemukan.")
     }
 
     const [statusId, stageId, adjusterId] = await Promise.all([
@@ -433,7 +433,7 @@ export async function updateClaimStatus(
 ): Promise<ClaimRecord> {
   const existing = await prisma.claim.findUnique({ where: { id } })
   if (!existing) {
-    throw new Error(`Klaim dengan ID "${id}" tidak ditemukan.`)
+    throw new Error("Klaim tidak ditemukan.")
   }
 
   const statusId = await resolveStatusId(status)
@@ -461,7 +461,7 @@ export async function updateClaimStatus(
 export async function deleteClaim(id: string, userId: string): Promise<void> {
   const existing = await prisma.claim.findUnique({ where: { id } })
   if (!existing) {
-    throw new Error(`Klaim dengan ID "${id}" tidak ditemukan.`)
+    throw new Error("Klaim tidak ditemukan.")
   }
 
   const paymentCount = await prisma.payment.count({ where: { claimId: id } })
@@ -892,13 +892,13 @@ export async function addClaimDocument(
   }
 ): Promise<ClaimDocumentRecord> {
   const realClaimId = await resolveClaimId(claimId)
-  if (!realClaimId) throw new Error(`Claim not found: ${claimId}`)
+  if (!realClaimId) throw new Error("Klaim tidak ditemukan.")
 
   const claim = await prisma.claim.findUnique({
     where: { id: realClaimId },
     include: { policy: { select: { cobId: true } } },
   })
-  if (!claim) throw new Error(`Claim not found: ${claimId}`)
+  if (!claim) throw new Error("Klaim tidak ditemukan.")
 
   let docType = await prisma.claimDocumentType.findFirst({
     where: {
@@ -974,7 +974,7 @@ export async function addClaimFollowup(
   userId?: string
 ): Promise<ClaimFollowupRecord> {
   const realClaimId = await resolveClaimId(claimId)
-  if (!realClaimId) throw new Error(`Claim not found: ${claimId}`)
+  if (!realClaimId) throw new Error("Klaim tidak ditemukan.")
 
   let validUserId: string | null = null
   if (userId) {

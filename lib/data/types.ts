@@ -209,6 +209,7 @@ export interface Policy {
   policyNo: string
   clientId: string | null
   placingSlipId: string | null
+  placingSlipNo?: string | null
   /** Polis induk untuk renewal, endorsement, dan pembatalan. */
   parentPolicyId: string | null
   insuredName: string

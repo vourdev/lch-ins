@@ -12,7 +12,7 @@ import { seedInitialClientsIfEmpty } from "@/lib/server/clients"
 import { recordAudit } from "@/server/services/audit"
 
 export type PolicyRecord = Policy
-export type PolicyInput = Omit<Policy, "id" | "files" | "endorsementSeq">
+export type PolicyInput = Omit<Policy, "id" | "files" | "endorsementSeq" | "placingSlipNo">
 
 export interface PolicyFormOptions {
   insurers: string[]
@@ -28,6 +28,7 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 const policyInclude = {
   cob: { select: { name: true } },
   policyType: { select: { name: true } },
+  placingSlip: { select: { slipNo: true } },
   insurers: {
     include: {
       insurer: { select: { name: true } },
@@ -55,6 +56,7 @@ function toPolicyRecord(row: PolicyRow): PolicyRecord {
     policyNo: row.policyNo,
     clientId: row.clientId,
     placingSlipId: row.placingSlipId,
+    placingSlipNo: row.placingSlip?.slipNo ?? null,
     parentPolicyId: row.parentPolicyId,
     insuredName: row.insuredName,
     insurer: leader?.insurer ?? "",
