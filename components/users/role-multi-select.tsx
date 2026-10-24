@@ -52,69 +52,71 @@ export function RoleMultiSelect({
   }
 
   const count = value.length
+  const clearable = count > 0 && !disabled
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger
-        id={id}
-        disabled={disabled}
-        className={cn(
-          "flex min-h-9 w-full cursor-pointer items-center justify-between gap-2 rounded-3xl border border-input bg-input/40 px-3 py-1.5 text-sm transition-[color,box-shadow,background-color] outline-none",
-          "focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30",
-          "disabled:cursor-not-allowed disabled:opacity-50",
-          className
-        )}
-        aria-haspopup="dialog"
-        aria-expanded={open}
-      >
-        <div className="flex flex-1 flex-wrap items-center gap-1.5 overflow-hidden text-left">
-          {count === 0 ? (
-            <span className="text-muted-foreground">{placeholder}</span>
-          ) : displayMode === "count" || count > 3 ? (
-            <div className="flex items-center gap-1.5">
-              <Badge variant="secondary" className="font-medium">
-                {count} peran dipilih
-              </Badge>
-              {value.slice(0, 2).map((r) => (
-                <UserRoleBadge key={r} role={r} />
-              ))}
-              {count > 2 && (
-                <span className="text-xs text-muted-foreground">
-                  +{count - 2} lainnya
-                </span>
-              )}
-            </div>
-          ) : (
-            <div className="flex flex-wrap gap-1">
-              {value.map((r) => (
-                <UserRoleBadge key={r} role={r} />
-              ))}
-            </div>
+      <div className="relative w-full">
+        <PopoverTrigger
+          id={id}
+          disabled={disabled}
+          className={cn(
+            "flex min-h-9 w-full cursor-pointer items-center justify-between gap-2 rounded-3xl border border-input bg-input/40 px-3 py-1.5 text-sm transition-[color,box-shadow,background-color] outline-none",
+            "focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30",
+            "disabled:cursor-not-allowed disabled:opacity-50",
+            className
           )}
-        </div>
-
-        <div className="flex shrink-0 items-center gap-1 text-muted-foreground">
-          {count > 0 && !disabled && (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation()
-                clearAll()
-              }}
-              className="rounded-full p-0.5 hover:bg-muted hover:text-foreground"
-              aria-label="Kosongkan pilihan"
-            >
-              <X className="size-3.5" />
-            </button>
-          )}
-          <ChevronDown
-            className={cn(
-              "size-4 transition-transform duration-200",
-              open && "rotate-180"
+          aria-haspopup="dialog"
+          aria-expanded={open}
+        >
+          <div className="flex flex-1 flex-wrap items-center gap-1.5 overflow-hidden text-left">
+            {count === 0 ? (
+              <span className="text-muted-foreground">{placeholder}</span>
+            ) : displayMode === "count" || count > 3 ? (
+              <div className="flex items-center gap-1.5">
+                <Badge variant="secondary" className="font-medium">
+                  {count} peran dipilih
+                </Badge>
+                {value.slice(0, 2).map((r) => (
+                  <UserRoleBadge key={r} role={r} />
+                ))}
+                {count > 2 && (
+                  <span className="text-xs text-muted-foreground">
+                    +{count - 2} lainnya
+                  </span>
+                )}
+              </div>
+            ) : (
+              <div className="flex flex-wrap gap-1">
+                {value.map((r) => (
+                  <UserRoleBadge key={r} role={r} />
+                ))}
+              </div>
             )}
-          />
-        </div>
-      </PopoverTrigger>
+          </div>
+
+          <div className="flex shrink-0 items-center gap-1 text-muted-foreground">
+            {/* Reserves room for the clear button, which sits outside the trigger to avoid nested buttons. */}
+            {clearable && <span aria-hidden className="size-4.5" />}
+            <ChevronDown
+              className={cn(
+                "size-4 transition-transform duration-200",
+                open && "rotate-180"
+              )}
+            />
+          </div>
+        </PopoverTrigger>
+        {clearable && (
+          <button
+            type="button"
+            onClick={clearAll}
+            className="absolute top-1/2 right-8 -translate-y-1/2 rounded-full p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+            aria-label="Kosongkan pilihan"
+          >
+            <X className="size-3.5" />
+          </button>
+        )}
+      </div>
 
       <PopoverContent align="start" className="w-80 p-2" sideOffset={6}>
         {/* Header & Quick Actions */}
