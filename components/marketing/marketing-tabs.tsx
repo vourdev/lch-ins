@@ -10,7 +10,7 @@ import { RenewalNotice } from "@/components/marketing/renewal-notice"
 import { SppaTable } from "@/components/marketing/sppa-table"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import type { Client } from "@/lib/data"
+import type { Client, VehicleBrandOption } from "@/lib/data"
 import type { ClientRecord } from "@/lib/server/clients"
 import type { SppaRecord } from "@/lib/server/sppa"
 import { store, useCollection } from "@/lib/store"
@@ -18,11 +18,13 @@ import { store, useCollection } from "@/lib/store"
 interface MarketingTabsProps {
   initialClients?: ClientRecord[]
   initialSppa?: SppaRecord[]
+  vehicleOptions?: VehicleBrandOption[]
 }
 
 export function MarketingTabs({
   initialClients,
   initialSppa,
+  vehicleOptions,
 }: MarketingTabsProps) {
   React.useEffect(() => {
     if (!initialSppa?.length) return
@@ -70,7 +72,7 @@ export function MarketingTabs({
           />
         </TabsContent>
         <TabsContent value="sppa">
-          <SppaTable initialSppa={initialSppa} />
+          <SppaTable initialSppa={initialSppa} vehicleOptions={vehicleOptions} />
         </TabsContent>
         <TabsContent value="renewal">
           <RenewalNotice />

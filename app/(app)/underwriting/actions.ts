@@ -38,6 +38,8 @@ const lineItemSchema = z.object({
   id: z.string(),
   description: z.string(),
   amount: z.coerce.number().optional(),
+  vehicleBrandId: z.uuid("Merek kendaraan tidak valid").nullish(),
+  vehicleTypeId: z.uuid("Tipe kendaraan tidak valid").nullish(),
 })
 
 const rateLineSchema = z.object({

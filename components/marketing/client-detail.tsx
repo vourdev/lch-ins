@@ -27,7 +27,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { kycMissing, policyStatus, type Client } from "@/lib/data"
+import { kycMissing, policyStatus, type Client, type VehicleBrandOption } from "@/lib/data"
 import { dateShort, money } from "@/lib/format"
 import type { SppaRecord } from "@/lib/server/sppa"
 import { store, useCollection, useRecord } from "@/lib/store"
@@ -45,12 +45,14 @@ interface ClientDetailProps {
   id: string
   initialClient?: Client | null
   initialSppa?: SppaRecord[]
+  vehicleOptions?: VehicleBrandOption[]
 }
 
 export function ClientDetail({
   id,
   initialClient,
   initialSppa,
+  vehicleOptions,
 }: ClientDetailProps) {
   const today = useToday()
 
@@ -254,7 +256,12 @@ export function ClientDetail({
       </div>
 
       <SectionCard title="SPPA" contentClassName="pt-4">
-        <SppaTable clientId={client.id} initialSppa={initialSppa} compact />
+        <SppaTable
+          clientId={client.id}
+          initialSppa={initialSppa}
+          compact
+          vehicleOptions={vehicleOptions}
+        />
       </SectionCard>
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">

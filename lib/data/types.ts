@@ -94,15 +94,38 @@ export interface Sppa {
   periodEnd: string | null
   /** Isian khusus per COB, disimpan sebagai jsonb sampai form SPPA LCH final. */
   answers: Record<string, string>
+  /** Motor Vehicle: merek dan tipe dari master data. Nama hanya untuk tampilan. */
+  vehicleBrandId?: string | null
+  vehicleTypeId?: string | null
+  vehicleBrandName?: string | null
+  vehicleTypeName?: string | null
   status: SppaStatus
   createdAt: string
   updatedAt: string
+}
+
+export interface VehicleTypeOption {
+  id: string
+  name: string
+  isActive: boolean
+}
+
+export interface VehicleBrandOption {
+  id: string
+  name: string
+  isActive: boolean
+  types: VehicleTypeOption[]
 }
 
 export interface LineItem {
   id: string
   description: string
   amount: number
+  /** Baris Interest slip Motor Vehicle: merek dan tipe dari master data. */
+  vehicleBrandId?: string | null
+  vehicleTypeId?: string | null
+  vehicleBrandName?: string | null
+  vehicleTypeName?: string | null
 }
 
 export interface RateLine {

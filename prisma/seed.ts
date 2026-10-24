@@ -10,6 +10,7 @@
  * - zona-gempa-ojk.csv     511 kabupaten dan kota beserta zona gempanya
  * - skala-bi-ojk.csv       persentase tarif menurut indemnity period
  * - clause-wording-lch.csv 607 klausul dari pustaka wording LCH
+ * - kendaraan.csv          merek dan tipe kendaraan umum di Indonesia
  *
  * Jalankan: npm run db:seed
  */
@@ -1405,6 +1406,30 @@ async function seedSppa() {
   return { created, updated, total: SPPA.length }
 }
 
+/** Merek dan tipe kendaraan awal. Baris yang sudah ada tidak diubah, jadi edit LCH aman. */
+async function seedVehicles() {
+  const rows = readCsv("kendaraan.csv")
+  const brands = [...new Set(rows.map((r) => r.merek))]
+  let created = 0
+  for (const [i, name] of brands.entries()) {
+    const brand = await prisma.vehicleBrand.upsert({
+      where: { name },
+      update: {},
+      create: { name, sortOrder: i },
+    })
+    for (const r of rows.filter((row) => row.merek === name)) {
+      const existing = await prisma.vehicleType.findUnique({
+        where: { brandId_name: { brandId: brand.id, name: r.tipe } },
+        select: { id: true },
+      })
+      if (existing) continue
+      await prisma.vehicleType.create({ data: { brandId: brand.id, name: r.tipe } })
+      created++
+    }
+  }
+  return { brands: brands.length, types: rows.length, created }
+}
+
 // ---------------------------------------------------------------------------
 
 /**
@@ -1420,6 +1445,7 @@ const SECTIONS = [
   "clauses",
   "clients",
   "sppa",
+  "vehicles",
 ] as const
 
 let seededUsers: {
@@ -1504,6 +1530,11 @@ async function main() {
     console.log(
       `  sppa                 ${sppa.total} (${sppa.created} baru, ${sppa.updated} diperbarui)`
     )
+  }
+
+  if (want("vehicles")) {
+    const v = await seedVehicles()
+    console.log(`  kendaraan            ${v.brands} merek, ${v.types} tipe (${v.created} baru)`)
   }
 
   if (clauses?.skipped || occ?.conflicts.length) {

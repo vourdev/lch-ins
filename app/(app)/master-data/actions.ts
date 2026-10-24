@@ -11,6 +11,8 @@ import type {
   CoverType,
   Insurer,
   LookupValue,
+  VehicleBrand,
+  VehicleType,
   WordingForm,
 } from "@/lib/generated/prisma/client"
 import {
@@ -44,6 +46,16 @@ import {
   updateLookupValue,
 } from "@/lib/server/master-data"
 import { requireManage } from "@/lib/server/session"
+import {
+  createVehicleBrand,
+  createVehicleType,
+  deleteVehicleBrand,
+  deleteVehicleType,
+  toggleVehicleBrandStatus,
+  toggleVehicleTypeStatus,
+  updateVehicleBrand,
+  updateVehicleType,
+} from "@/lib/server/vehicles"
 
 export interface ActionResponse<T = unknown> {
   ok: boolean
@@ -571,4 +583,132 @@ export async function updateCobOjkClassAction(
       error: err instanceof Error ? err.message : "Gagal memperbarui klasifikasi OJK",
     }
   }
+}
+
+// ---------------------------------------------------------------------------
+// Merek dan tipe kendaraan
+// ---------------------------------------------------------------------------
+
+const vehicleIdSchema = z.uuid()
+
+const vehicleBrandSchema = z.object({
+  name: z.string().trim().min(1, "Nama merek wajib diisi"),
+  sortOrder: z.number().int().min(0).optional(),
+  isActive: z.boolean().optional(),
+})
+
+const vehicleTypeSchema = z.object({
+  brandId: z.uuid("Pilih merek yang valid"),
+  name: z.string().trim().min(1, "Nama tipe wajib diisi"),
+  isActive: z.boolean().optional(),
+})
+
+const vehicleTypeUpdateSchema = z.object({
+  brandId: z.uuid("Pilih merek yang valid").optional(),
+  name: z.string().trim().min(1, "Nama tipe wajib diisi"),
+  isActive: z.boolean().optional(),
+})
+
+/** Shared wrapper: access check, revalidation of every page that lists vehicles, and error text. */
+async function vehicleAction<T>(
+  fallbackError: string,
+  run: (userId: string) => Promise<T>
+): Promise<ActionResponse<T>> {
+  try {
+    const session = await requireManage("/master-data")
+    const data = await run(session.id)
+    revalidatePath("/master-data")
+    revalidatePath("/marketing")
+    revalidatePath("/underwriting")
+    return { ok: true, data }
+  } catch (err) {
+    unstable_rethrow(err)
+    return { ok: false, error: err instanceof Error ? err.message : fallbackError }
+  }
+}
+
+function parseOrThrow<T>(schema: z.ZodType<T>, value: unknown, message?: string): T {
+  const parsed = schema.safeParse(value)
+  if (!parsed.success) throw new Error(message ?? parsed.error.issues[0]?.message)
+  return parsed.data
+}
+
+export async function createVehicleBrandAction(
+  data: z.infer<typeof vehicleBrandSchema>
+): Promise<ActionResponse<VehicleBrand>> {
+  return vehicleAction("Gagal menambah merek", (userId) =>
+    createVehicleBrand(parseOrThrow(vehicleBrandSchema, data), userId)
+  )
+}
+
+export async function updateVehicleBrandAction(
+  id: string,
+  data: z.infer<typeof vehicleBrandSchema>
+): Promise<ActionResponse<VehicleBrand>> {
+  return vehicleAction("Gagal memperbarui merek", (userId) =>
+    updateVehicleBrand(
+      parseOrThrow(vehicleIdSchema, id, "Merek tidak valid"),
+      parseOrThrow(vehicleBrandSchema, data),
+      userId
+    )
+  )
+}
+
+export async function toggleVehicleBrandStatusAction(
+  id: string,
+  isActive: boolean
+): Promise<ActionResponse<void>> {
+  return vehicleAction("Gagal mengubah status merek", (userId) =>
+    toggleVehicleBrandStatus(
+      parseOrThrow(vehicleIdSchema, id, "Merek tidak valid"),
+      isActive,
+      userId
+    )
+  )
+}
+
+export async function deleteVehicleBrandAction(id: string): Promise<ActionResponse<void>> {
+  return vehicleAction("Gagal menghapus merek", (userId) =>
+    deleteVehicleBrand(parseOrThrow(vehicleIdSchema, id, "Merek tidak valid"), userId)
+  )
+}
+
+export async function createVehicleTypeAction(
+  data: z.infer<typeof vehicleTypeSchema>
+): Promise<ActionResponse<VehicleType>> {
+  return vehicleAction("Gagal menambah tipe", (userId) =>
+    createVehicleType(parseOrThrow(vehicleTypeSchema, data), userId)
+  )
+}
+
+export async function updateVehicleTypeAction(
+  id: string,
+  data: z.infer<typeof vehicleTypeUpdateSchema>
+): Promise<ActionResponse<VehicleType>> {
+  return vehicleAction("Gagal memperbarui tipe", (userId) =>
+    updateVehicleType(
+      parseOrThrow(vehicleIdSchema, id, "Tipe tidak valid"),
+      parseOrThrow(vehicleTypeUpdateSchema, data),
+      userId
+    )
+  )
+}
+
+export async function toggleVehicleTypeStatusAction(
+  id: string,
+  isActive: boolean
+): Promise<ActionResponse<void>> {
+  return vehicleAction("Gagal mengubah status tipe", (userId) =>
+    toggleVehicleTypeStatus(
+      parseOrThrow(vehicleIdSchema, id, "Tipe tidak valid"),
+      isActive,
+      userId
+    )
+  )
+}
+
+export async function deleteVehicleTypeAction(id: string): Promise<ActionResponse<void>> {
+  return vehicleAction("Gagal menghapus tipe", (userId) =>
+    deleteVehicleType(parseOrThrow(vehicleIdSchema, id, "Tipe tidak valid"), userId)
+  )
 }

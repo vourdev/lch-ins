@@ -3,6 +3,7 @@ import type { Metadata } from "next"
 import { NewSlip } from "@/components/underwriting/new-slip"
 import { getClientById } from "@/lib/server/clients"
 import { getSppaById } from "@/lib/server/sppa"
+import { listVehicleOptions } from "@/lib/server/vehicles"
 
 export const metadata: Metadata = {
   title: "Buat Placing Slip — LCH Insurance Brokers",
@@ -15,9 +16,10 @@ export default async function NewSlipPage({
 }) {
   const { sppa, client } = await searchParams
 
-  const [initialSppa, initialClient] = await Promise.all([
+  const [initialSppa, initialClient, vehicleOptions] = await Promise.all([
     sppa ? getSppaById(sppa) : null,
     client ? getClientById(client) : null,
+    listVehicleOptions(),
   ])
 
   let resolvedClient = initialClient
@@ -31,6 +33,7 @@ export default async function NewSlipPage({
       clientId={client}
       initialSppa={initialSppa ?? undefined}
       initialClient={resolvedClient ?? undefined}
+      vehicleOptions={vehicleOptions}
     />
   )
 }

@@ -6,6 +6,7 @@ import {
   TYPE_OF_COVER,
   type ClassOfBusiness,
   type Client,
+  type LineItem,
   type PlacingSlip,
   type RateLine,
   type Sppa,
@@ -287,10 +288,29 @@ export function slipFromSppa(sppa: Sppa, client: Client | null): PlacingSlip {
   const cob = normalizeCob(sppa.cob)
   const base = switchCob(emptySlip(), cob)
   const property = cob === "Property"
-  const amount = {
+  const motor = cob === "Motor Vehicle"
+
+  const motorDescParts = [
+    sppa.answers?.year ? `Tahun ${sppa.answers.year}` : null,
+    sppa.answers?.plate ? `No. Pol: ${sppa.answers.plate}` : null,
+    sppa.answers?.chassis ? `Rangka/Mesin: ${sppa.answers.chassis}` : null,
+    sppa.answers?.usage ? `Penggunaan: ${sppa.answers.usage}` : null,
+  ].filter(Boolean)
+  const motorDesc =
+    motorDescParts.length > 0 ? motorDescParts.join(" · ") : sppa.typeOfCover
+
+  const amount: LineItem = {
     id: uid("m"),
-    description: sppa.typeOfCover,
+    description: motor ? motorDesc : sppa.typeOfCover,
     amount: sppa.sumInsured,
+    ...(motor
+      ? {
+          vehicleBrandId: sppa.vehicleBrandId ?? null,
+          vehicleTypeId: sppa.vehicleTypeId ?? null,
+          vehicleBrandName: sppa.vehicleBrandName ?? null,
+          vehicleTypeName: sppa.vehicleTypeName ?? null,
+        }
+      : {}),
   }
   return recalc({
     ...base,

@@ -11,6 +11,7 @@ import { SPPA as MOCK_SPPA } from "@/lib/data/sppa"
 import { CLIENTS } from "@/lib/data/clients"
 import { normalizeCob } from "@/lib/format"
 import { prisma } from "@/lib/prisma"
+import { checkVehiclePair } from "@/lib/server/vehicles"
 import { recordAudit } from "@/server/services/audit"
 
 export interface SppaRecord extends Sppa {
@@ -37,6 +38,8 @@ export interface SppaInput {
   occupation?: string | null
   occupationId?: string | null
   coverTypeId?: string | null
+  vehicleBrandId?: string | null
+  vehicleTypeId?: string | null
   currency?: string
   sumInsured: number
   periodStart?: string | null
@@ -182,20 +185,23 @@ function resolveOccupationId(
   return cache.occupationsByCode.get(code)?.id ?? null
 }
 
-type PrismaSppaWithRelations = Prisma.SppaGetPayload<{
-  include: {
-    client: { select: { id: true; name: true; clientType: { select: { name: true } } } }
-    cob: { select: { id: true; code: true; name: true } }
-    coverType: { select: { id: true; code: true; name: true } }
-    occupation: { select: { id: true; code: true; name: true } }
-    placingSlips: {
-      select: { id: true; slipNo: true; status: true }
-    }
-    _count: {
-      select: { placingSlips: true }
-    }
-  }
-}>
+const sppaInclude = {
+  client: { select: { id: true, name: true, clientType: { select: { name: true } } } },
+  cob: { select: { id: true, code: true, name: true } },
+  coverType: { select: { id: true, code: true, name: true } },
+  occupation: { select: { id: true, code: true, name: true } },
+  vehicleBrand: { select: { name: true } },
+  vehicleType: { select: { name: true } },
+  placingSlips: {
+    select: { id: true, slipNo: true, status: true },
+    take: 1,
+  },
+  _count: {
+    select: { placingSlips: true },
+  },
+} satisfies Prisma.SppaInclude
+
+type PrismaSppaWithRelations = Prisma.SppaGetPayload<{ include: typeof sppaInclude }>
 
 function mapPrismaSppaToRecord(raw: PrismaSppaWithRelations): SppaRecord {
   const sumInsuredNum = raw.sumInsured ? Number(raw.sumInsured.toString()) : 0
@@ -254,6 +260,10 @@ function mapPrismaSppaToRecord(raw: PrismaSppaWithRelations): SppaRecord {
     status: (raw.status as SppaStatus) ?? "Draft",
     createdAt,
     updatedAt,
+    vehicleBrandId: raw.vehicleBrandId,
+    vehicleTypeId: raw.vehicleTypeId,
+    vehicleBrandName: raw.vehicleBrand?.name ?? null,
+    vehicleTypeName: raw.vehicleType?.name ?? null,
     coverTypeId: raw.coverTypeId ?? null,
     occupationId: raw.occupationId ?? null,
     createdBy: raw.createdBy,
@@ -363,19 +373,7 @@ export async function listSppa(params: ListSppaParams = {}): Promise<SppaRecord[
   const rows = await prisma.sppa.findMany({
     where,
     orderBy: { createdAt: "desc" },
-    include: {
-      client: { select: { id: true, name: true, clientType: { select: { name: true } } } },
-      cob: { select: { id: true, code: true, name: true } },
-      coverType: { select: { id: true, code: true, name: true } },
-      occupation: { select: { id: true, code: true, name: true } },
-      placingSlips: {
-        select: { id: true, slipNo: true, status: true },
-        take: 1,
-      },
-      _count: {
-        select: { placingSlips: true },
-      },
-    },
+    include: sppaInclude,
   })
 
   return rows.map(mapPrismaSppaToRecord)
@@ -390,19 +388,7 @@ export async function getSppaById(id: string): Promise<SppaRecord | null> {
   if (!id || !id.trim()) return null
   const trimmed = id.trim()
 
-  const include = {
-    client: { select: { id: true, name: true, clientType: { select: { name: true } } } },
-    cob: { select: { id: true, code: true, name: true } },
-    coverType: { select: { id: true, code: true, name: true } },
-    occupation: { select: { id: true, code: true, name: true } },
-    placingSlips: {
-      select: { id: true, slipNo: true, status: true },
-      take: 1,
-    },
-    _count: {
-      select: { placingSlips: true },
-    },
-  }
+  const include = sppaInclude
 
   if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(trimmed)) {
     const found = await prisma.sppa.findUnique({
@@ -422,6 +408,15 @@ export async function getSppaById(id: string): Promise<SppaRecord | null> {
   }
 
   return null
+}
+
+/** Merek dan tipe wajib untuk Motor Vehicle, dan dikosongkan untuk COB lain. */
+async function vehicleFieldsFor(cobName: string, input: SppaInput) {
+  if (normalizeCob(cobName) !== "Motor Vehicle") {
+    return { vehicleBrandId: null, vehicleTypeId: null }
+  }
+  if (!input.vehicleBrandId) throw new Error("Merek kendaraan wajib dipilih.")
+  return checkVehiclePair(prisma, input.vehicleBrandId, input.vehicleTypeId)
 }
 
 /**
@@ -458,21 +453,10 @@ export async function createSppa(input: SppaInput, userId: string): Promise<Sppa
       periodEnd: input.periodEnd ? new Date(input.periodEnd) : null,
       answers,
       status: input.status ?? "Draft",
+      ...(await vehicleFieldsFor(cob.name, input)),
       createdBy: userId,
     },
-    include: {
-      client: { select: { id: true, name: true, clientType: { select: { name: true } } } },
-      cob: { select: { id: true, code: true, name: true } },
-      coverType: { select: { id: true, code: true, name: true } },
-      occupation: { select: { id: true, code: true, name: true } },
-      placingSlips: {
-        select: { id: true, slipNo: true, status: true },
-        take: 1,
-      },
-      _count: {
-        select: { placingSlips: true },
-      },
-    },
+    include: sppaInclude,
   })
 
   if (userId) {
@@ -536,20 +520,9 @@ export async function updateSppa(
       periodEnd: input.periodEnd ? new Date(input.periodEnd) : null,
       answers,
       status: input.status ?? existing.status,
+      ...(await vehicleFieldsFor(cob.name, input)),
     },
-    include: {
-      client: { select: { id: true, name: true, clientType: { select: { name: true } } } },
-      cob: { select: { id: true, code: true, name: true } },
-      coverType: { select: { id: true, code: true, name: true } },
-      occupation: { select: { id: true, code: true, name: true } },
-      placingSlips: {
-        select: { id: true, slipNo: true, status: true },
-        take: 1,
-      },
-      _count: {
-        select: { placingSlips: true },
-      },
-    },
+    include: sppaInclude,
   })
 
   if (userId) {

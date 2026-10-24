@@ -18,6 +18,8 @@ export const ENTITY_LABELS: Record<string, string> = {
   insurers: "Asuransi",
   lookup_values: "Nilai Pilihan",
   wording_forms: "Wording",
+  vehicle_brands: "Merek Kendaraan",
+  vehicle_types: "Tipe Kendaraan",
 }
 
 export const ACTION_LABELS: Record<string, string> = {
@@ -95,6 +97,10 @@ const FIELD_LABELS: Record<string, string> = {
   cobOjkClassId: "Klasifikasi OJK",
   placementLocationId: "Lokasi penempatan",
   wordingFormId: "Wording",
+  vehicleBrandId: "Merek kendaraan",
+  brandId: "Merek kendaraan",
+  vehicleTypeId: "Tipe kendaraan",
+  sortOrder: "Urutan",
   formVariantId: "Varian formulir",
   resetPeriodId: "Periode reset",
   claimNo: "Nomor klaim",

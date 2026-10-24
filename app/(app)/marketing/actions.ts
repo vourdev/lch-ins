@@ -177,6 +177,8 @@ const sppaInputSchema = z
     occupation: z.string().nullish(),
     occupationId: z.string().nullish(),
     coverTypeId: z.string().nullish(),
+    vehicleBrandId: z.uuid("Merek kendaraan tidak valid").nullish(),
+    vehicleTypeId: z.uuid("Tipe kendaraan tidak valid").nullish(),
     currency: z.string().default("IDR"),
     sumInsured: z.coerce.number().min(0, "Nilai pertanggungan tidak boleh negatif"),
     periodStart: z.string().nullish(),

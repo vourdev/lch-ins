@@ -25,6 +25,7 @@ import {
   type ClassOfBusiness,
   type Sppa,
   type SppaStatus,
+  type VehicleBrandOption,
 } from "@/lib/data"
 import { OCCUPATION_TARIFFS } from "@/lib/data/ojk-tariff"
 import { addMonths, todayIso } from "@/lib/date"
@@ -51,6 +52,8 @@ const schema = z
     sumInsured: z.number().positive("Nilai pertanggungan wajib diisi"),
     periodStart: z.string().nullable(),
     periodEnd: z.string().nullable(),
+    vehicleBrandId: z.string().nullable().optional(),
+    vehicleTypeId: z.string().nullable().optional(),
   })
   .superRefine((d, ctx) => {
     if (d.periodStart && d.periodEnd && d.periodEnd <= d.periodStart) {
@@ -60,6 +63,22 @@ const schema = z
         message: "Akhir periode harus setelah awal periode",
       })
     }
+    if (d.cob === "Motor Vehicle") {
+      if (!d.vehicleBrandId) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["vehicleBrandId"],
+          message: "Merek kendaraan wajib dipilih",
+        })
+      }
+      if (!d.vehicleTypeId) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["vehicleTypeId"],
+          message: "Tipe kendaraan wajib dipilih",
+        })
+      }
+    }
   })
 
 export function SppaForm({
@@ -67,12 +86,14 @@ export function SppaForm({
   onOpenChange,
   sppa,
   clientId,
+  vehicleOptions = [],
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
   sppa?: Sppa | null
   /** Klien terpilih saat SPPA dibuat dari halaman detail klien. */
   clientId?: string | null
+  vehicleOptions?: VehicleBrandOption[]
 }) {
   const clients = useCollection("clients")
   const [draft, setDraft] = React.useState<Draft>(() => {
@@ -92,6 +113,8 @@ export function SppaForm({
       periodStart: start,
       periodEnd: addMonths(start, 12),
       answers: {},
+      vehicleBrandId: null,
+      vehicleTypeId: null,
       status: "Draft",
       createdAt: start,
       updatedAt: start,
@@ -102,6 +125,25 @@ export function SppaForm({
 
   const questions = SPPA_QUESTIONS[draft.cob] ?? []
   const coverItems = (TYPE_OF_COVER[draft.cob] ?? []).map((t) => t.label)
+
+  const brandOptions = React.useMemo(() => {
+    return (vehicleOptions ?? [])
+      .filter((b) => b.isActive || b.id === draft.vehicleBrandId)
+      .map((b) => ({ label: b.name, value: b.id }))
+  }, [vehicleOptions, draft.vehicleBrandId])
+
+  const selectedBrand = React.useMemo(() => {
+    return (vehicleOptions ?? []).find((b) => b.id === draft.vehicleBrandId)
+  }, [vehicleOptions, draft.vehicleBrandId])
+
+  const typeOptions = React.useMemo(() => {
+    if (!selectedBrand) return []
+    return (selectedBrand.types ?? [])
+      .filter((t) => t.isActive || t.id === draft.vehicleTypeId)
+      .map((t) => ({ label: t.name, value: t.id }))
+  }, [selectedBrand, draft.vehicleTypeId])
+
+  const legacyVehicleAnswer = draft.answers?.vehicle
 
   async function submit() {
     const result = validate(schema, draft)
@@ -115,6 +157,10 @@ export function SppaForm({
       insuredName: draft.insuredName,
       riskLocation: draft.riskLocation || null,
       occupation: draft.occupation || null,
+      vehicleBrandId:
+        draft.cob === "Motor Vehicle" ? draft.vehicleBrandId ?? null : null,
+      vehicleTypeId:
+        draft.cob === "Motor Vehicle" ? draft.vehicleTypeId ?? null : null,
       currency: draft.currency || "IDR",
       sumInsured: draft.sumInsured,
       periodStart: draft.periodStart || null,
@@ -188,7 +234,13 @@ export function SppaForm({
             items={CLASSES_OF_BUSINESS}
             value={draft.cob}
             onValueChange={(v) =>
-              set({ cob: v as ClassOfBusiness, typeOfCover: "", answers: {} })
+              set({
+                cob: v as ClassOfBusiness,
+                typeOfCover: "",
+                answers: {},
+                vehicleBrandId: null,
+                vehicleTypeId: null,
+              })
             }
           />
           <SelectInput
@@ -200,6 +252,45 @@ export function SppaForm({
             placeholder="Pilih jenis penutupan"
             error={errors.typeOfCover}
           />
+          {draft.cob === "Motor Vehicle" ? (
+            <>
+              <SearchSelect
+                label="Merek Kendaraan"
+                required
+                items={brandOptions}
+                value={draft.vehicleBrandId ?? null}
+                onValueChange={(id) => {
+                  set({
+                    vehicleBrandId: id ?? null,
+                    vehicleTypeId: null,
+                  })
+                }}
+                placeholder="Pilih merek kendaraan"
+                emptyMessage="Merek kendaraan tidak ditemukan di master data."
+                error={errors.vehicleBrandId}
+                description={
+                  legacyVehicleAnswer
+                    ? `Isian lama: ${legacyVehicleAnswer}`
+                    : undefined
+                }
+              />
+              <SearchSelect
+                label="Tipe Kendaraan"
+                required
+                disabled={!draft.vehicleBrandId}
+                items={typeOptions}
+                value={draft.vehicleTypeId ?? null}
+                onValueChange={(id) => set({ vehicleTypeId: id ?? null })}
+                placeholder={
+                  draft.vehicleBrandId
+                    ? "Pilih tipe kendaraan"
+                    : "Pilih merek terlebih dahulu"
+                }
+                emptyMessage="Tipe kendaraan tidak ditemukan di master data."
+                error={errors.vehicleTypeId}
+              />
+            </>
+          ) : null}
           {draft.cob === "Property" ? (
             <SearchSelect
               className="sm:col-span-2"
