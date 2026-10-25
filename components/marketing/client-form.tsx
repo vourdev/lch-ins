@@ -31,7 +31,7 @@ import {
   type ClientType,
 } from "@/lib/data"
 import { todayIso } from "@/lib/date"
-import { newId, store, useCollection } from "@/lib/store"
+import { newId, store } from "@/lib/store"
 import {
   email,
   nik,
@@ -151,7 +151,6 @@ export function ClientForm({
   client?: Client | null
   onSaved?: (client: Client) => void
 }) {
-  const clients = useCollection("clients")
   const [draft, setDraft] = React.useState<Draft>(() =>
     client ? { ...client } : emptyDraft()
   )
@@ -180,16 +179,10 @@ export function ClientForm({
   }
 
   async function submit() {
+    // Duplicate names are rejected by the server, which checks the real client table.
     const result = validate(schema, draft)
-    const errs = { ...result.errors }
-    const duplicate = clients.find(
-      (c) =>
-        c.id !== draft.id &&
-        c.name.trim().toLowerCase() === draft.name.trim().toLowerCase()
-    )
-    if (duplicate) errs.name = "Klien dengan nama ini sudah terdaftar"
-    setErrors(errs)
-    if (!result.ok || duplicate) return false
+    setErrors(result.errors)
+    if (!result.ok) return false
 
     const addresses = draft.addresses.some((a) => a.isPrimary)
       ? draft.addresses
