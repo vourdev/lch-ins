@@ -2,7 +2,7 @@
 
 - **Tanggal:** 2026-10-25
 - **Branch:** `fix/audit-trail-log-dan-dropdown`
-- **PR:** (isi setelah PR dibuka)
+- **PR:** #27
 - **Dikerjakan oleh:** ZoD3V dengan Claude Code
 
 ## Latar belakang
