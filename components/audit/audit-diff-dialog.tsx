@@ -85,7 +85,7 @@ export function AuditDiffDialog({
               </h4>
 
               <div className="rounded-lg border overflow-hidden">
-                <table className="w-full border-collapse text-left text-sm">
+                <table className="w-full table-fixed border-collapse text-left text-sm">
                   <thead>
                     <tr className="border-b bg-muted/40 text-muted-foreground">
                       <th className="w-1/4 px-3 py-2.5 text-xs font-medium">Isian</th>
@@ -98,7 +98,7 @@ export function AuditDiffDialog({
                       const item = changes[key]
                       return (
                         <tr key={key} className="hover:bg-muted/15">
-                          <td className="py-2.5 px-3 font-medium align-top text-foreground">
+                          <td className="py-2.5 px-3 font-medium align-top wrap-break-word text-foreground">
                             {fieldLabel(key)}
                           </td>
                           <td className="py-2.5 px-3 align-top whitespace-pre-line wrap-break-word bg-destructive/5 text-destructive-foreground/90">

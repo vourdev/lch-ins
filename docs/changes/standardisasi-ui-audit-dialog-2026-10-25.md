@@ -30,7 +30,8 @@ Modul lain diperiksa untuk masalah serupa, lalu ikut diperbaiki.
   deskripsi panjang tidak lagi tertimpa tombol X. Berlaku untuk semua dialog
   dan drawer form.
 - **Popup detail Audit Trail** melebar sampai `max-w-4xl` (896px) dan tinggi
-  maksimal 90vh. Kolom tabel dibagi Isian 1/4, Sebelum 3/8, Sesudah 3/8.
+  maksimal 90vh. Kolom tabel dibagi Isian 1/4, Sebelum 3/8, Sesudah 3/8, dan
+  tabelnya `table-fixed` supaya di layar HP kolom Sesudah tidak terpotong.
 - **Softcopy Polis (sheet)** sekarang benar-benar memakai lebar `max-w-md`.
   Sebelumnya override lebarnya kalah oleh lebar bawaan sheet.
 - **Dialog kata sandi sementara:** `max-w-md` diganti `sm:max-w-md`. Kelas
@@ -46,6 +47,9 @@ Modul lain diperiksa untuk masalah serupa, lalu ikut diperbaiki.
   bawaannya.
 - **Tanggal tertutup:** tombol close diposisikan `absolute top-4 right-4`
   (menempati 16–48px dari kanan), tapi header tidak menyisakan ruang untuk itu.
+- **Kolom Sesudah hilang di HP** (ditemukan saat uji end to end): tabel
+  `table-auto` melebar mengikuti isi terpanjang (398px di wadah 340px), dan
+  wadahnya `overflow-hidden`, jadi kolom terakhir terpotong.
 - **Dropdown beda:** filter Audit Trail dibuat sendiri dengan kelas pill dan
   label inline, bukan memakai pola filter yang sudah ada.
 
@@ -71,13 +75,33 @@ Modul lain diperiksa untuk masalah serupa, lalu ikut diperbaiki.
 
 - `npx tsc --noEmit` lolos, `npx eslint` pada file yang diubah bersih,
   `npm run build` lolos.
-- Browser lokal (viewport 1194px), halaman `/audit-trail`:
-  - trigger filter aksi dan modul tingginya 32px, font 14px, punya
-    `aria-label`, dan tidak ada lagi label inline;
-  - popup detail lebarnya 896px, menampilkan 13 baris perubahan; teks header
-    berakhir di x=989, tombol close mulai di x=997, jadi tidak bertumpuk.
+- Uji end to end di browser lokal (ego-browser, viewport 1194px kecuali
+  disebut lain):
+  - `/audit-trail`: trigger filter aksi dan modul sama dengan `/users`
+    (tinggi 32px, radius dan font 14px sama), punya `aria-label`, tanpa label
+    inline. Filter Hapus: 100 → 18 log, semua baris Hapus. Ditambah modul
+    Polis: 6 log. Filter tanggal dari 23 Okt: 3 log; rentang 23–22 Okt: 0 log
+    dengan pesan kosong; hanya 22 Okt: 3 log. Reset Filter mengembalikan semua
+    filter dan 100 log.
+  - Popup detail: 896×671px (90vh), kolom 212/317/317px, teks header berakhir
+    di x=989 dan tombol close mulai di x=997. Isi bisa di-scroll sampai baris
+    terakhir. Tutup lewat X dan Escape berjalan, fokus kembali ke tombol
+    Detail.
+  - Viewport 390px: filter tidak meluber (lebar dokumen 390px), popup tidak
+    bertumpuk dengan tombol close, dan ketiga kolom tabel muat setelah
+    perbaikan `table-fixed`.
+  - Master Data → Nilai Pilihan Dropdown: trigger kategori sama dengan pola
+    filter lain, opsi tampil sebagai nama, dan memilih Daftar Bank mengganti
+    isi tabel.
+  - Drawer Tambah Polis (`FormDrawer`): padding kanan header 56px, teks
+    berakhir di x=1138 dan tombol X mulai di x=1146.
+  - Sheet Softcopy Polis: lebar 448px (`max-w-md`, sebelumnya tertahan 384px),
+    header tidak bertumpuk dengan X.
 
 ## Catatan untuk yang melanjutkan
+
+- Dialog kata sandi sementara tidak diuji di browser karena memicunya berarti
+  mereset kata sandi akun. Perubahannya hanya kelas lebar.
 
 - Override lebar `DialogContent` pakai `sm:max-w-*`. Override lebar sheet sisi
   kanan pakai `data-[side=right]:sm:max-w-*`. Tanpa varian yang sama, override
