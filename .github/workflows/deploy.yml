@@ -1,0 +1,22 @@
+name: Deploy to Production VPS
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Deploy to Production VPS
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Trigger Remote Deployment via SSH
+        env:
+          SSH_USER: ${{ secrets.VPS_SSH_USER || 'ibssh_3izzdoi3nhelj7fvixatkwf6we' }}
+          SSH_HOST: ${{ secrets.VPS_SSH_HOST || 'ssh.instabox.sh' }}
+          SSH_PORT: ${{ secrets.VPS_SSH_PORT || '2222' }}
+        run: |
+          ssh -o StrictHostKeyChecking=no -p "${SSH_PORT}" "${SSH_USER}@${SSH_HOST}" "/data/workspace/app/deploy.sh"
