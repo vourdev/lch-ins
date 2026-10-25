@@ -37,8 +37,8 @@ export function AuditDiffDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col p-0 overflow-hidden">
-        <DialogHeader className="p-6 pb-4 border-b">
+      <DialogContent className="flex max-h-[90vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-4xl">
+        <DialogHeader className="border-b p-6 pr-14 pb-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <StatusBadge status={log.action} />
@@ -85,12 +85,12 @@ export function AuditDiffDialog({
               </h4>
 
               <div className="rounded-lg border overflow-hidden">
-                <table className="w-full text-left text-xs border-collapse">
+                <table className="w-full border-collapse text-left text-sm">
                   <thead>
                     <tr className="border-b bg-muted/40 text-muted-foreground">
-                      <th className="py-2.5 px-3 font-medium w-1/3">Isian</th>
-                      <th className="py-2.5 px-3 font-medium w-1/3">Sebelum</th>
-                      <th className="py-2.5 px-3 font-medium w-1/3">Sesudah</th>
+                      <th className="w-1/4 px-3 py-2.5 text-xs font-medium">Isian</th>
+                      <th className="w-3/8 px-3 py-2.5 text-xs font-medium">Sebelum</th>
+                      <th className="w-3/8 px-3 py-2.5 text-xs font-medium">Sesudah</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y">

@@ -29,6 +29,7 @@ import { Label } from "@/components/ui/label"
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -84,6 +85,10 @@ export function LookupValuesTab({
   const [lookups, setLookups] = React.useState<LookupValue[]>(initialLookups)
   const [query, setQuery] = React.useState("")
   const [isPending, startTransition] = React.useTransition()
+  const categoryItems = availableTypes.map((t) => ({
+    label: TYPE_LABELS[t] ?? t,
+    value: t,
+  }))
 
   // Modal State
   const [dialogOpen, setDialogOpen] = React.useState(false)
@@ -221,27 +226,24 @@ export function LookupValuesTab({
       {/* Category selector & Toolbar */}
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-card p-3.5 shadow-xs">
         <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-muted-foreground whitespace-nowrap">
-              Kategori Pilihan:
-            </span>
-            <Select
-              items={availableTypes.map((t) => ({ label: TYPE_LABELS[t] ?? t, value: t }))}
-              value={selectedType}
-              onValueChange={(val) => setSelectedType(val ?? "client_status")}
-            >
-              <SelectTrigger className="h-8.5 w-60 text-xs font-medium">
-                <SelectValue placeholder="Pilih kategori" />
-              </SelectTrigger>
-              <SelectContent>
-                {availableTypes.map((t) => (
-                  <SelectItem key={t} value={t} className="text-xs">
-                    {TYPE_LABELS[t] ?? t}
+          <Select
+            items={categoryItems}
+            value={selectedType}
+            onValueChange={(val) => setSelectedType(val ?? "client_status")}
+          >
+            <SelectTrigger size="sm" className="w-60" aria-label="Kategori pilihan">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                {categoryItems.map((item) => (
+                  <SelectItem key={item.value} value={item.value}>
+                    {item.label}
                   </SelectItem>
                 ))}
-              </SelectContent>
-            </Select>
-          </div>
+              </SelectGroup>
+            </SelectContent>
+          </Select>
 
           <SearchInput
             value={query}

@@ -22,6 +22,7 @@ import { Input } from "@/components/ui/input"
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -178,66 +179,62 @@ export function AuditTable({
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5 pt-1 border-t text-xs">
-          <div className="flex items-center gap-1.5">
-            <span className="text-muted-foreground font-medium">Aksi:</span>
-            <Select
-              items={ACTION_OPTIONS}
-              value={actionFilter}
-              onValueChange={(val) => setActionFilter(val ?? "all")}
-            >
-              <SelectTrigger className="h-8 w-37 text-xs">
-                <SelectValue placeholder="Pilih aksi" />
-              </SelectTrigger>
-              <SelectContent>
+        <div className="flex flex-wrap items-center gap-2 border-t pt-3">
+          <Select
+            items={ACTION_OPTIONS}
+            value={actionFilter}
+            onValueChange={(val) => setActionFilter(val ?? "all")}
+          >
+            <SelectTrigger size="sm" className="w-37" aria-label="Filter aksi">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
                 {ACTION_OPTIONS.map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value} className="text-xs">
+                  <SelectItem key={opt.value} value={opt.value}>
                     {opt.label}
                   </SelectItem>
                 ))}
-              </SelectContent>
-            </Select>
-          </div>
+              </SelectGroup>
+            </SelectContent>
+          </Select>
 
-          <div className="flex items-center gap-1.5">
-            <span className="text-muted-foreground font-medium">Modul:</span>
-            <Select
-              items={entityOptions}
-              value={entityFilter}
-              onValueChange={(val) => setEntityFilter(val ?? "all")}
-            >
-              <SelectTrigger className="h-8 w-42 text-xs">
-                <SelectValue placeholder="Pilih modul" />
-              </SelectTrigger>
-              <SelectContent>
+          <Select
+            items={entityOptions}
+            value={entityFilter}
+            onValueChange={(val) => setEntityFilter(val ?? "all")}
+          >
+            <SelectTrigger size="sm" className="w-42" aria-label="Filter modul">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
                 {entityOptions.map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value} className="text-xs">
+                  <SelectItem key={opt.value} value={opt.value}>
                     {opt.label}
                   </SelectItem>
                 ))}
-              </SelectContent>
-            </Select>
-          </div>
+              </SelectGroup>
+            </SelectContent>
+          </Select>
 
           <div className="flex items-center gap-1.5">
-            <span className="text-muted-foreground font-medium">Dari:</span>
             <Input
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              placeholder="YYYY-MM-DD"
-              className="h-8 w-35 text-xs"
+              aria-label="Dari tanggal"
+              className="h-8 w-38"
             />
-          </div>
-
-          <div className="flex items-center gap-1.5">
-            <span className="text-muted-foreground font-medium">Sampai:</span>
+            <span className="text-muted-foreground" aria-hidden="true">
+              –
+            </span>
             <Input
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              placeholder="YYYY-MM-DD"
-              className="h-8 w-35 text-xs"
+              aria-label="Sampai tanggal"
+              className="h-8 w-38"
             />
           </div>
 

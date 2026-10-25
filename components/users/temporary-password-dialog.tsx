@@ -45,7 +45,7 @@ export function TemporaryPasswordDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <div className="flex items-center gap-2">
             <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">

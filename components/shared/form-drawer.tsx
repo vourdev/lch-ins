@@ -77,7 +77,7 @@ export function FormDrawer({
           className
         )}
       >
-        <SheetHeader className="border-b px-6 py-5">
+        <SheetHeader className="border-b py-5">
           <SheetTitle className="text-base">{title}</SheetTitle>
           {description ? (
             <SheetDescription>{description}</SheetDescription>

@@ -52,8 +52,8 @@ export function PolicyFilesSheet({
 
   return (
     <Sheet open={policy != null} onOpenChange={onOpenChange}>
-      <SheetContent className="flex w-full flex-col gap-0 p-0 sm:max-w-md">
-        <SheetHeader className="border-b px-6 py-5">
+      <SheetContent className="flex w-full flex-col gap-0 p-0 data-[side=right]:sm:max-w-md">
+        <SheetHeader className="border-b py-5">
           <SheetTitle className="text-base">Softcopy Polis</SheetTitle>
           <SheetDescription>
             {policy?.policyNo} · {policy?.insuredName}
