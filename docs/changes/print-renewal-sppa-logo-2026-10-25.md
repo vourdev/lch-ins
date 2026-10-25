@@ -2,7 +2,7 @@
 
 - **Tanggal:** 2026-10-25
 - **Branch:** `feat/print-renewal-sppa-logo`
-- **PR:** #<nomor> (isi setelah PR dibuka)
+- **PR:** #29
 - **Dikerjakan oleh:** ZoD3V dengan Claude Code
 
 ## Latar belakang
