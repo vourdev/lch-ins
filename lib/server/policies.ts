@@ -6,8 +6,10 @@ import { POLICIES as MOCK_POLICIES } from "@/lib/data/policies"
 import { POLICY_TYPES } from "@/lib/data/reference"
 import { SLIPS as MOCK_SLIPS } from "@/lib/data/slips"
 import type { ClassOfBusiness, Policy, SecurityPanelRow } from "@/lib/data/types"
+import { addDays } from "@/lib/date"
 import { normalizeCob } from "@/lib/format"
 import { prisma } from "@/lib/prisma"
+import { MAX_RENEWAL_DAYS } from "@/lib/renewal"
 import { seedInitialClientsIfEmpty } from "@/lib/server/clients"
 import { recordAudit } from "@/server/services/audit"
 
@@ -309,6 +311,22 @@ export async function listPolicies(): Promise<PolicyRecord[]> {
   const rows = await prisma.policy.findMany({
     include: policyInclude,
     orderBy: { expiryDate: "desc" },
+  })
+  return rows.map(toPolicyRecord)
+}
+
+/** Polis yang berakhir dalam periode renewal terpanjang, supaya Marketing tidak memuat seluruh tabel. */
+export async function listRenewalPolicies(today: string): Promise<PolicyRecord[]> {
+  await seedInitialPoliciesIfEmpty()
+  const rows = await prisma.policy.findMany({
+    where: {
+      expiryDate: {
+        gte: new Date(today),
+        lte: new Date(addDays(today, MAX_RENEWAL_DAYS)),
+      },
+    },
+    include: policyInclude,
+    orderBy: { expiryDate: "asc" },
   })
   return rows.map(toPolicyRecord)
 }

@@ -205,6 +205,9 @@
     padding: 0 !important;
     max-width: none !important;
     width: 100% !important;
+    /* Pita navy form KYC ikut tercetak tanpa harus mencentang "Background graphics". */
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
   }
   .print-break {
     break-before: page;

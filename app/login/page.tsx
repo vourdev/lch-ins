@@ -3,6 +3,7 @@ import { redirect } from "next/navigation"
 import { connection } from "next/server"
 
 import { LoginForm } from "@/components/auth/login-form"
+import { LchLogo } from "@/components/documents/letterhead"
 import { currentUser } from "@/lib/server/session"
 
 export const dynamic = "force-dynamic"
@@ -33,11 +34,12 @@ export default async function LoginPage({
   return (
     <main className="flex min-h-svh items-center justify-center bg-muted/40 px-4 py-10">
       <div className="w-full max-w-sm">
-        <div className="mb-7 text-center">
-          <p className="text-lg font-semibold tracking-tight">
-            PT. LCH Insurance Brokers
-          </p>
-          <p className="mt-1 text-sm text-muted-foreground">
+        <div className="mb-7 flex flex-col items-center text-center">
+          <h1 className="sr-only">PT. LCH Insurance Brokers</h1>
+          <div className="rounded-xl bg-white px-5 py-3 shadow-sm ring-1 ring-black/5">
+            <LchLogo alt="" className="h-10 w-auto" />
+          </div>
+          <p className="mt-3 text-sm text-muted-foreground">
             Sistem Back Office
           </p>
         </div>

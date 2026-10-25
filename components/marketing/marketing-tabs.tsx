@@ -10,7 +10,7 @@ import { RenewalNotice } from "@/components/marketing/renewal-notice"
 import { SppaTable } from "@/components/marketing/sppa-table"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import type { Client, VehicleBrandOption } from "@/lib/data"
+import type { Client, Policy, VehicleBrandOption } from "@/lib/data"
 import type { ClientRecord } from "@/lib/server/clients"
 import type { SppaRecord } from "@/lib/server/sppa"
 import { store, useCollection } from "@/lib/store"
@@ -18,13 +18,22 @@ import { store, useCollection } from "@/lib/store"
 interface MarketingTabsProps {
   initialClients?: ClientRecord[]
   initialSppa?: SppaRecord[]
+  initialPolicies?: Policy[]
   vehicleOptions?: VehicleBrandOption[]
+  /** Tab awal dari `?tab=`, supaya tombol Kembali di halaman cetak mendarat di tab asal. */
+  initialTab?: string
+  renewalPeriod?: string
+  renewalCob?: string
 }
 
 export function MarketingTabs({
   initialClients,
   initialSppa,
+  initialPolicies,
   vehicleOptions,
+  initialTab = "clients",
+  renewalPeriod,
+  renewalCob,
 }: MarketingTabsProps) {
   React.useEffect(() => {
     if (!initialSppa?.length) return
@@ -57,7 +66,7 @@ export function MarketingTabs({
         }
       />
 
-      <Tabs defaultValue="clients" className="flex flex-col gap-4">
+      <Tabs defaultValue={initialTab} className="flex flex-col gap-4">
         <TabsList className="no-print">
           <TabsTrigger value="clients">Database Klien</TabsTrigger>
           <TabsTrigger value="sppa">SPPA ({sppaCount})</TabsTrigger>
@@ -72,10 +81,17 @@ export function MarketingTabs({
           />
         </TabsContent>
         <TabsContent value="sppa">
-          <SppaTable initialSppa={initialSppa} vehicleOptions={vehicleOptions} />
+          <SppaTable
+            initialSppa={initialSppa}
+            vehicleOptions={vehicleOptions}
+          />
         </TabsContent>
         <TabsContent value="renewal">
-          <RenewalNotice />
+          <RenewalNotice
+            initialPolicies={initialPolicies}
+            initialPeriod={renewalPeriod}
+            initialCob={renewalCob}
+          />
         </TabsContent>
       </Tabs>
 

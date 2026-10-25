@@ -1,9 +1,11 @@
 "use client"
 
+import Image from "next/image"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { LogOut } from "lucide-react"
 
+import logoMark from "@/public/images/logo-lch-mark.png"
 import { NAV_GROUPS } from "@/components/layout/nav-items"
 import { canAccess } from "@/lib/access"
 import { signOut } from "@/lib/auth-client"
@@ -54,8 +56,9 @@ export function AppSidebar({
     <Sidebar collapsible="icon" className="border-r">
       <SidebarHeader className="h-14 justify-center border-b px-4 group-data-[collapsible=icon]:px-2">
         <Link href="/" className="flex items-center gap-2.5 overflow-hidden">
-          <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-sidebar-primary text-[13px] font-bold text-sidebar-primary-foreground">
-            L
+          {/* Tile putih tetap dipakai di tema gelap karena latar emblem putih. */}
+          <span className="flex size-7 shrink-0 items-center justify-center overflow-hidden rounded-md bg-white ring-1 ring-sidebar-border">
+            <Image src={logoMark} alt="" className="size-full" loading="eager" />
           </span>
           <span className="grid leading-tight group-data-[collapsible=icon]:hidden">
             <span className="truncate text-[13px] font-semibold text-sidebar-accent-foreground">

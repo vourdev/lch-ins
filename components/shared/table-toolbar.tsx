@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import Link from "next/link"
 import {
   ChevronDown,
   FileSpreadsheet,
@@ -54,14 +55,17 @@ export function SearchInput({
 
 /**
  * Export and print buttons above tables. Export uses the currently visible
- * (filtered) rows, matching what the user sees.
+ * (filtered) rows, matching what the user sees. With `printHref`, Print opens
+ * a dedicated print page instead of printing the current screen.
  */
 export function ExportButtons<T>({
   className,
   spec,
+  printHref,
 }: {
   className?: string
   spec?: ExportSpec<T>
+  printHref?: string
 }) {
   const [busy, setBusy] = React.useState(false)
 
@@ -111,10 +115,22 @@ export function ExportButtons<T>({
           </DropdownMenuContent>
         </DropdownMenu>
       ) : null}
-      <Button variant="outline" size="sm" onClick={() => window.print()}>
-        <Printer data-icon="inline-start" />
-        Print
-      </Button>
+      {printHref ? (
+        <Button
+          variant="outline"
+          size="sm"
+          render={<Link href={printHref} />}
+          nativeButton={false}
+        >
+          <Printer data-icon="inline-start" />
+          Print
+        </Button>
+      ) : (
+        <Button variant="outline" size="sm" onClick={() => window.print()}>
+          <Printer data-icon="inline-start" />
+          Print
+        </Button>
+      )}
     </div>
   )
 }

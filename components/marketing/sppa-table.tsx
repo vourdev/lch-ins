@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { FilePlus2, Pencil, Plus, Send, Trash2 } from "lucide-react"
+import { FilePlus2, Pencil, Plus, Printer, Send, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 
 import { SppaForm } from "@/components/marketing/sppa-form"
@@ -88,6 +88,11 @@ export function SppaTable({
   function actionsFor(s: Sppa): RowAction[] {
     const slipCount = slips.filter((x) => x.sppaId === s.id).length
     const actions: RowAction[] = [
+      {
+        label: "Cetak SPPA",
+        icon: Printer,
+        render: <Link href={`/marketing/sppa/${s.id}`} />,
+      },
       {
         label: "Buat placing slip",
         icon: FilePlus2,

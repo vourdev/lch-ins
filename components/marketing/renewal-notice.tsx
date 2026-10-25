@@ -1,12 +1,17 @@
 "use client"
 
 import * as React from "react"
-import { CalendarClock } from "lucide-react"
+import Link from "next/link"
+import { CalendarClock, Printer } from "lucide-react"
 
 import { useToday } from "@/components/layout/today-provider"
+import { ACTION_COL_CLASS, RowActions } from "@/components/shared/row-actions"
 import { StatusBadge, ToneBadge } from "@/components/shared/status-badge"
 import { TableEmpty } from "@/components/shared/table-empty"
-import { TablePagination, usePagination } from "@/components/shared/table-pagination"
+import {
+  TablePagination,
+  usePagination,
+} from "@/components/shared/table-pagination"
 import { ExportButtons } from "@/components/shared/table-toolbar"
 import { Card } from "@/components/ui/card"
 import { Field, FieldLabel } from "@/components/ui/field"
@@ -35,37 +40,44 @@ import {
 import { daysBetween } from "@/lib/date"
 import type { ExportSpec } from "@/lib/export"
 import { dateShort, rupiah } from "@/lib/format"
+import {
+  DEFAULT_RENEWAL_PERIOD,
+  RENEWAL_PERIODS,
+  renewalCandidates,
+  renewalQuery,
+} from "@/lib/renewal"
 import { useCollection } from "@/lib/store"
 
-const PERIOD_ITEMS = [
-  { label: "30 hari", value: "30" },
-  { label: "60 hari", value: "60" },
-  { label: "90 hari", value: "90" },
-  { label: "180 hari", value: "180" },
-]
+const PERIOD_ITEMS = RENEWAL_PERIODS.map((d) => ({
+  label: `${d} hari`,
+  value: d,
+}))
 const COB_ITEMS = [
   { label: "Semua COB", value: "all" },
   ...CLASSES_OF_BUSINESS.map((c) => ({ label: c, value: c })),
 ]
 
-export function RenewalNotice() {
+export function RenewalNotice({
+  initialPolicies,
+  initialPeriod = DEFAULT_RENEWAL_PERIOD,
+  initialCob = "all",
+}: {
+  initialPolicies?: Policy[]
+  initialPeriod?: string
+  initialCob?: string
+}) {
   const today = useToday()
-  const policies = useCollection("policies")
-  const [period, setPeriod] = React.useState("90")
-  const [cob, setCob] = React.useState("all")
+  const sessionPolicies = useCollection("policies")
+  // Store baru berisi data database setelah Policy Database dibuka, jadi data server didahulukan.
+  const policies = initialPolicies ?? sessionPolicies
+  const [period, setPeriod] = React.useState(initialPeriod)
+  const [cob, setCob] = React.useState(initialCob)
 
-  const rows = React.useMemo(() => {
-    const limit = Number(period)
-    return policies
-      .filter((p) => {
-        // Endorsement dan pembatalan ikut polis induknya, tidak di-renew sendiri.
-        if (p.type === "Endorsement" || p.type === "Cancellation") return false
-        if (cob !== "all" && p.cob !== cob) return false
-        const d = daysBetween(today, p.expiryDate)
-        return d >= 0 && d <= limit
-      })
-      .sort((a, b) => a.expiryDate.localeCompare(b.expiryDate))
-  }, [policies, period, cob, today])
+  const rows = React.useMemo(
+    () => renewalCandidates(policies, today, Number(period), cob),
+    [policies, period, cob, today]
+  )
+  const printParams = renewalQuery(period, cob)
 
   const {
     page,
@@ -143,7 +155,11 @@ export function RenewalNotice() {
             </SelectContent>
           </Select>
         </Field>
-        <ExportButtons className="ml-auto" spec={exportSpec} />
+        <ExportButtons
+          className="ml-auto"
+          spec={exportSpec}
+          printHref={`/marketing/renewal?${printParams}`}
+        />
       </div>
 
       <Card className="flex-row items-center gap-3 px-5 py-4">
@@ -159,6 +175,9 @@ export function RenewalNotice() {
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
+              <TableHead className={ACTION_COL_CLASS}>
+                <span className="sr-only">Aksi</span>
+              </TableHead>
               <TableHead>No. Polis</TableHead>
               <TableHead>Nama Tertanggung</TableHead>
               <TableHead>COB</TableHead>
@@ -171,7 +190,7 @@ export function RenewalNotice() {
           <TableBody>
             {rows.length === 0 ? (
               <TableEmpty
-                colSpan={7}
+                colSpan={8}
                 message="Tidak ada polis jatuh tempo pada periode ini"
               />
             ) : (
@@ -179,6 +198,21 @@ export function RenewalNotice() {
                 const days = daysBetween(today, p.expiryDate)
                 return (
                   <TableRow key={p.id}>
+                    <TableCell className={ACTION_COL_CLASS}>
+                      <RowActions
+                        actions={[
+                          {
+                            label: "Cetak surat pemberitahuan",
+                            icon: Printer,
+                            render: (
+                              <Link
+                                href={`/marketing/renewal/${p.id}?${printParams}`}
+                              />
+                            ),
+                          },
+                        ]}
+                      />
+                    </TableCell>
                     <TableCell className="tabular font-medium">
                       {p.policyNo}
                     </TableCell>

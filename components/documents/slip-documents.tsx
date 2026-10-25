@@ -1,6 +1,5 @@
 "use client"
 
-import * as React from "react"
 import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
 
@@ -21,7 +20,8 @@ import {
   premiumRows,
   type PremiumRow,
 } from "@/components/documents/doc-blocks"
-import { DocumentFooter, Letterhead } from "@/components/documents/letterhead"
+import { Letterhead } from "@/components/documents/letterhead"
+import { PrintedAt } from "@/components/documents/printed-at"
 import { derivedDocNumber } from "@/components/underwriting/slip-model"
 import { Button } from "@/components/ui/button"
 import { brokerageAmount, netPremium } from "@/lib/calc"
@@ -38,25 +38,6 @@ type DocProps = { id: string; initial: PlacingSlip | null }
 
 function useSlip({ id, initial }: DocProps) {
   return useRecord("slips", id) ?? initial
-}
-
-function noopSubscribe() {
-  return () => {}
-}
-
-/** Waktu cetak diambil saat halaman dibuka di browser, bukan saat build. */
-function PrintedAt() {
-  const label = React.useSyncExternalStore(
-    noopSubscribe,
-    () =>
-      new Intl.DateTimeFormat("id-ID", {
-        timeZone: "Asia/Jakarta",
-        dateStyle: "short",
-        timeStyle: "short",
-      }).format(new Date(Math.floor(Date.now() / 60_000) * 60_000)),
-    () => ""
-  )
-  return <DocumentFooter printedAt={label ? `${label} WIB` : "—"} />
 }
 
 function Missing() {

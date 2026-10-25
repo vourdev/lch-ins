@@ -63,14 +63,26 @@ export function DetailTable({ slip }: { slip: PlacingSlip }) {
   if (slip.wordingForms.filter(Boolean).length)
     rows.push(["Wording Form", slip.wordingForms.filter(Boolean).join("; ")])
 
+  return <InfoTable rows={rows} />
+}
+
+export function InfoTable({
+  rows,
+  dense = false,
+}: {
+  rows: [string, string][]
+  /** Baris rapat untuk surat yang harus muat satu halaman. */
+  dense?: boolean
+}) {
+  const cell = dense ? "py-0.5" : "py-1.5"
   return (
     <table className="mb-6 w-full text-[13px]">
       <tbody>
         {rows.map(([k, v]) => (
           <tr key={k} className="align-top">
-            <td className="w-[190px] py-1.5 text-muted-foreground">{k}</td>
-            <td className="w-3 py-1.5">:</td>
-            <td className="py-1.5">{v}</td>
+            <td className={cn("w-[190px] text-muted-foreground", cell)}>{k}</td>
+            <td className={cn("w-3", cell)}>:</td>
+            <td className={cell}>{v || "—"}</td>
           </tr>
         ))}
       </tbody>
@@ -155,7 +167,7 @@ export function InterestBlock({ slip }: { slip: PlacingSlip }) {
               >
                 <span className="leading-relaxed">
                   {vehicleLabel ? (
-                    <span className="font-semibold text-foreground mr-1.5">
+                    <span className="mr-1.5 font-semibold text-foreground">
                       {vehicleLabel}
                       {i.description ? " —" : ""}
                     </span>
