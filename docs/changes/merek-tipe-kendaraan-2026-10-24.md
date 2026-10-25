@@ -17,7 +17,7 @@ Keputusan perancangan yang disepakati:
 - Hierarki parent-child: Tipe adalah model per merek (contoh: Toyota -> Avanza, Innova Zenix). Dropdown tipe baru aktif setelah merek dipilih, dan berganti merek otomatis mengosongkan tipe.
 - Opsi terstruktur: Pilihan wajib berasal dari master data. Merek/tipe baru didaftarkan lewat menu Master Data.
 - Placing slip per baris Interest: Setiap baris pertanggungan (interest item) pada slip Motor Vehicle dapat memilih merek dan tipe kendaraan masing-masing (mendukung armada multi-kendaraan).
-- Seed awal: Merek umum di Indonesia (Toyota, Daihatsu, Honda, Mitsubishi, Suzuki, Nissan, Hyundai, Wuling, Isuzu, Mazda, BMW, Mercedes-Benz) beserta model-model populernya.
+- Seed awal: Merek umum di Indonesia (Toyota, Daihatsu, Honda, Mitsubishi, Suzuki, Nissan, Hyundai, Wuling, Isuzu, Mazda, Hino) beserta model-model populernya.
 
 ## Yang berubah
 
@@ -48,7 +48,7 @@ Keputusan perancangan yang disepakati:
 
 - `prisma/schema.prisma`: Model baru `VehicleBrand` dan `VehicleType` serta relasi FK opsional di `Sppa` dan `SlipItem`.
 - `prisma/migrations/20261024120000_vehicle_brands_types/migration.sql`: Migrasi DDL skema database PostgreSQL.
-- `prisma/seed-data/kendaraan.csv` & `prisma/seed.ts`: Seed data awal 12 merek dan 70 model kendaraan umum Indonesia.
+- `prisma/seed-data/kendaraan.csv` & `prisma/seed.ts`: Seed data awal 11 merek dan 56 tipe kendaraan umum Indonesia.
 - `lib/server/vehicles.ts`: Query options, query master dengan hitungan penggunaan, validasi relasi pasangan (`checkVehiclePair`), dan mutasi CRUD dengan pencatatan audit.
 - `app/(app)/master-data/actions.ts`: Server Actions untuk operasi CRUD merek dan tipe kendaraan.
 - `components/master-data/vehicles-tab.tsx`: Komponen UI tab Kendaraan di Master Data.
@@ -79,6 +79,12 @@ Keputusan perancangan yang disepakati:
    - Halaman `/marketing` dialog "SPPA Baru" dengan COB Motor Vehicle menampilkan dropdown "Merek Kendaraan *" dan "Tipe Kendaraan *" (disabled sebelum merek dipilih).
    - Halaman `/underwriting/new` dengan COB Motor Vehicle menampilkan kartu "Kendaraan #1" beserta input SearchSelect merek & tipe, serta penambahan unit melalui "+ Tambah kendaraan" (muncul "Kendaraan #2").
    - Probe TreeWalker memverifikasi 0 UUID mentah yang bocor pada elemen UI yang dirender.
+5. **Aksesibilitas dan E2E ulang (2026-10-25, `ego-browser`, login admin lokal):**
+   - Tab Kendaraan: 35 tombol ikon semuanya punya `aria-label` (contoh "Buka tipe Toyota", "Edit merek Toyota", "Edit tipe Agya"), 11 switch status semuanya berlabel. Expand Toyota menampilkan tipenya.
+   - SPPA Motor Vehicle: tipe disabled dengan placeholder "Pilih merek terlebih dahulu"; memilih Toyota membuka tipe Toyota saja; mengganti merek ke Honda mengosongkan tipe dan menampilkan tipe Honda saja.
+   - Placing slip Motor Vehicle: kartu "Kendaraan #1", pilih Mitsubishi lalu Pajero Sport, "+ Tambah kendaraan" memunculkan "Kendaraan #2"; tombol hapus berlabel "Hapus kendaraan #1/#2".
+   - Probe UUID: 0 di teks dan input yang terlihat. Satu UUID ada di hidden input bawaan base-ui Select (`aria-hidden`, 1px), bukan tampilan pengguna.
+   - Belum diuji di putaran ini: menyimpan SPPA dan membuat slip dari SPPA (prefill).
 
 ## Catatan untuk yang melanjutkan
 
