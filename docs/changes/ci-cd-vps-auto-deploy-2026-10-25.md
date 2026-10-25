@@ -2,7 +2,7 @@
 
 - **Tanggal:** 2026-10-25
 - **Branch:** `chore/ci-cd-vps-auto-deploy`
-- **PR:** (isi setelah PR dibuka)
+- **PR:** #30
 - **Dikerjakan oleh:** ZoD3V dengan Claude Code
 
 ## Latar belakang
