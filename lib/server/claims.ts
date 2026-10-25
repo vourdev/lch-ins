@@ -710,6 +710,30 @@ function toClaimDocumentRecord(doc: {
   }
 }
 
+/** Document and follow-up changes are logged under their claim so the audit row shows the claim number. */
+function documentSnapshot(doc: ClaimDocumentRecord) {
+  return {
+    document: doc.documentTypeName,
+    documentReceived: doc.isReceived,
+    documentReceivedDate: doc.receivedDate,
+    documentNotes: doc.notes,
+    documentFile: doc.filePath,
+  }
+}
+
+function followupSnapshot(f: ClaimFollowupRecord) {
+  return { followupDate: f.followupDate, followupNote: f.note }
+}
+
+async function findClaimDocument(documentId: string) {
+  const doc = await prisma.claimDocument.findUnique({
+    where: { id: documentId },
+    include: { documentType: true },
+  })
+  if (!doc) throw new Error("Dokumen klaim tidak ditemukan.")
+  return toClaimDocumentRecord(doc)
+}
+
 function toClaimFollowupRecord(f: {
   id: string
   claimId: string
@@ -805,8 +829,10 @@ export async function listClaimDocuments(claimId: string): Promise<ClaimDocument
 export async function toggleClaimDocument(
   documentId: string,
   isReceived: boolean,
-  receivedDate?: string | null
+  receivedDate: string | null | undefined,
+  userId: string
 ): Promise<ClaimDocumentRecord> {
+  const before = await findClaimDocument(documentId)
   const dateVal = isReceived
     ? (receivedDate ? new Date(receivedDate) : new Date())
     : null
@@ -854,7 +880,17 @@ export async function toggleClaimDocument(
     }
   }
 
-  return toClaimDocumentRecord(updated)
+  const record = toClaimDocumentRecord(updated)
+  await recordAudit(prisma, {
+    userId,
+    entity: "claims",
+    entityId: record.claimId,
+    action: "Update",
+    before: documentSnapshot(before),
+    after: documentSnapshot(record),
+    context: { document: record.documentTypeName },
+  })
+  return record
 }
 
 export async function updateClaimDocument(
@@ -863,8 +899,10 @@ export async function updateClaimDocument(
     notes?: string | null
     filePath?: string | null
     receivedDate?: string | null
-  }
+  },
+  userId: string
 ): Promise<ClaimDocumentRecord> {
+  const before = await findClaimDocument(documentId)
   const data: { notes?: string | null; filePath?: string | null; receivedDate?: Date | null } = {}
   if (input.notes !== undefined) data.notes = input.notes
   if (input.filePath !== undefined) data.filePath = input.filePath
@@ -880,7 +918,17 @@ export async function updateClaimDocument(
     },
   })
 
-  return toClaimDocumentRecord(updated)
+  const record = toClaimDocumentRecord(updated)
+  await recordAudit(prisma, {
+    userId,
+    entity: "claims",
+    entityId: record.claimId,
+    action: "Update",
+    before: documentSnapshot(before),
+    after: documentSnapshot(record),
+    context: { document: record.documentTypeName },
+  })
+  return record
 }
 
 export async function addClaimDocument(
@@ -889,7 +937,8 @@ export async function addClaimDocument(
     name: string
     isRequired?: boolean
     notes?: string | null
-  }
+  },
+  userId: string
 ): Promise<ClaimDocumentRecord> {
   const realClaimId = await resolveClaimId(claimId)
   if (!realClaimId) throw new Error("Klaim tidak ditemukan.")
@@ -931,12 +980,30 @@ export async function addClaimDocument(
     },
   })
 
-  return toClaimDocumentRecord(doc)
+  const record = toClaimDocumentRecord(doc)
+  await recordAudit(prisma, {
+    userId,
+    entity: "claims",
+    entityId: record.claimId,
+    action: "Update",
+    before: null,
+    after: documentSnapshot(record),
+  })
+  return record
 }
 
-export async function deleteClaimDocument(documentId: string): Promise<void> {
+export async function deleteClaimDocument(documentId: string, userId: string): Promise<void> {
+  const before = await findClaimDocument(documentId)
   await prisma.claimDocument.delete({
     where: { id: documentId },
+  })
+  await recordAudit(prisma, {
+    userId,
+    entity: "claims",
+    entityId: before.claimId,
+    action: "Update",
+    before: documentSnapshot(before),
+    after: null,
   })
 }
 
@@ -1002,12 +1069,33 @@ export async function addClaimFollowup(
     },
   })
 
-  return toClaimFollowupRecord(created)
+  const record = toClaimFollowupRecord(created)
+  if (userId) {
+    await recordAudit(prisma, {
+      userId,
+      entity: "claims",
+      entityId: record.claimId,
+      action: "Update",
+      before: null,
+      after: followupSnapshot(record),
+    })
+  }
+  return record
 }
 
-export async function deleteClaimFollowup(followupId: string, _userId?: string): Promise<void> {
+export async function deleteClaimFollowup(followupId: string, userId: string): Promise<void> {
+  const existing = await prisma.claimFollowup.findUnique({ where: { id: followupId } })
+  if (!existing) throw new Error("Catatan follow-up tidak ditemukan.")
   await prisma.claimFollowup.delete({
     where: { id: followupId },
+  })
+  await recordAudit(prisma, {
+    userId,
+    entity: "claims",
+    entityId: existing.claimId,
+    action: "Update",
+    before: followupSnapshot(toClaimFollowupRecord(existing)),
+    after: null,
   })
 }
 

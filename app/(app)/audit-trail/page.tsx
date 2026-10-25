@@ -1,18 +1,31 @@
 import type { Metadata } from "next"
 
+import { parseAuditFilter } from "@/components/audit/audit-filter"
 import { AuditTable } from "@/components/audit/audit-table"
 import { PageHeader, PageShell } from "@/components/layout/page-header"
-import { listAuditEntities, listAuditLogs } from "@/lib/server/audit"
+import {
+  listAuditEntities,
+  listAuditLogs,
+  listAuditUsers,
+} from "@/lib/server/audit"
 import { requireAdmin } from "@/lib/server/session"
 
 export const metadata: Metadata = { title: "Audit Trail — LCH Insurance Brokers" }
 
-export default async function AuditTrailPage() {
+export default async function AuditTrailPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>
+}) {
   await requireAdmin("/audit-trail")
 
-  const [logsResult, entities] = await Promise.all([
-    listAuditLogs({ pageSize: 100 }),
+  const filter = parseAuditFilter(await searchParams)
+
+  // Filtering and paging run in the database; loading a fixed slice hid older and other users' logs.
+  const [result, entities, users] = await Promise.all([
+    listAuditLogs(filter),
     listAuditEntities(),
+    listAuditUsers(),
   ])
 
   return (
@@ -22,8 +35,10 @@ export default async function AuditTrailPage() {
         description="Catatan riwayat aktivitas siapa mengubah apa dan kapan di seluruh sistem LCH"
       />
       <AuditTable
-        initialLogs={logsResult.items}
+        result={result}
+        filter={filter}
         availableEntities={entities}
+        users={users}
       />
     </PageShell>
   )

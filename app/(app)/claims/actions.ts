@@ -158,8 +158,8 @@ export async function toggleClaimDocumentAction(
   receivedDate?: string | null
 ): Promise<ActionResponse<ClaimDocumentRecord>> {
   try {
-    await requireManage("/claims")
-    const doc = await toggleClaimDocument(documentId, isReceived, receivedDate)
+    const session = await requireManage("/claims")
+    const doc = await toggleClaimDocument(documentId, isReceived, receivedDate, session.id)
     revalidatePath("/claims")
     revalidatePath("/")
     return { ok: true, data: doc }
@@ -179,8 +179,8 @@ export async function updateClaimDocumentAction(
   }
 ): Promise<ActionResponse<ClaimDocumentRecord>> {
   try {
-    await requireManage("/claims")
-    const doc = await updateClaimDocument(documentId, input)
+    const session = await requireManage("/claims")
+    const doc = await updateClaimDocument(documentId, input, session.id)
     revalidatePath("/claims")
     return { ok: true, data: doc }
   } catch (err) {
@@ -199,11 +199,11 @@ export async function addClaimDocumentAction(
   }
 ): Promise<ActionResponse<ClaimDocumentRecord>> {
   try {
-    await requireManage("/claims")
+    const session = await requireManage("/claims")
     if (!input.name || !input.name.trim()) {
       return { ok: false, error: "Nama dokumen wajib diisi" }
     }
-    const doc = await addClaimDocument(claimId, input)
+    const doc = await addClaimDocument(claimId, input, session.id)
     revalidatePath("/claims")
     return { ok: true, data: doc }
   } catch (err) {
@@ -217,8 +217,8 @@ export async function deleteClaimDocumentAction(
   documentId: string
 ): Promise<ActionResponse<void>> {
   try {
-    await requireManage("/claims")
-    await deleteClaimDocument(documentId)
+    const session = await requireManage("/claims")
+    await deleteClaimDocument(documentId, session.id)
     revalidatePath("/claims")
     return { ok: true }
   } catch (err) {

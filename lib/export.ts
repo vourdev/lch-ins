@@ -19,6 +19,8 @@ export interface ExportSpec<T> {
   sheet?: string
   columns: ExportColumn<T>[]
   rows: T[]
+  /** Fetches the full set at click time when `rows` holds only the visible page. */
+  loadRows?: () => Promise<T[]>
 }
 
 function stamp() {

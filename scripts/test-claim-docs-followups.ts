@@ -18,6 +18,7 @@ async function runTests() {
     include: { policy: { include: { cob: true } } },
   })
   const user = await prisma.user.findFirst({ select: { id: true, name: true } })
+  const startedAt = new Date()
 
   if (!claim) throw new Error("No claim found in DB. Run seed first.")
   if (!user) throw new Error("No user found in DB. Run seed first.")
@@ -33,7 +34,7 @@ async function runTests() {
 
   // 3. Test toggleClaimDocument
   const targetDoc = docs[0]
-  const toggled = await toggleClaimDocument(targetDoc.id, true, "2026-10-22")
+  const toggled = await toggleClaimDocument(targetDoc.id, true, "2026-10-22", user.id)
   if (!toggled.isReceived || toggled.receivedDate !== "2026-10-22") {
     throw new Error(`toggleClaimDocument failed to mark received: ${JSON.stringify(toggled)}`)
   }
@@ -41,7 +42,7 @@ async function runTests() {
 
   // 4. Test updateClaimDocument (notes)
   const updatedNote = "Dokumen asli sudah diverifikasi oleh staf operasional"
-  const docWithNotes = await updateClaimDocument(targetDoc.id, { notes: updatedNote })
+  const docWithNotes = await updateClaimDocument(targetDoc.id, { notes: updatedNote }, user.id)
   if (docWithNotes.notes !== updatedNote) {
     throw new Error(`updateClaimDocument failed to save note: ${docWithNotes.notes}`)
   }
@@ -52,14 +53,14 @@ async function runTests() {
     name: "Surat Keterangan Kerusakan dari Pihak Ketiga",
     isRequired: false,
     notes: "Dokumen opsional tambahan",
-  })
+  }, user.id)
   if (!customDoc.id || customDoc.documentTypeName !== "Surat Keterangan Kerusakan dari Pihak Ketiga") {
     throw new Error(`addClaimDocument failed: ${JSON.stringify(customDoc)}`)
   }
   console.log(`[PASS] addClaimDocument created custom item: ${customDoc.documentTypeName}`)
 
   // 6. Test deleteClaimDocument
-  await deleteClaimDocument(customDoc.id)
+  await deleteClaimDocument(customDoc.id, user.id)
   const docsAfterDelete = await listClaimDocuments(claim.id)
   if (docsAfterDelete.some((d) => d.id === customDoc.id)) {
     throw new Error("deleteClaimDocument failed to remove document")
@@ -96,7 +97,25 @@ async function runTests() {
   console.log(`[PASS] deleteClaimFollowup removed entry successfully`)
 
   // Reset targetDoc isReceived to initial state
-  await toggleClaimDocument(targetDoc.id, false)
+  await toggleClaimDocument(targetDoc.id, false, null, user.id)
+  const auditCount = await prisma.auditLog.count({
+    where: { entity: "claims", entityId: claim.id, userId: user.id, createdAt: { gte: startedAt } },
+  })
+  if (auditCount !== 7) {
+    throw new Error(`Expected 7 audit rows for document and follow-up changes, got ${auditCount}`)
+  }
+  console.log(`[PASS] ${auditCount} audit rows recorded under the claim`)
+
+  const toggleLog = await prisma.auditLog.findFirst({
+    where: { entity: "claims", entityId: claim.id, userId: user.id, createdAt: { gte: startedAt } },
+    orderBy: { createdAt: "desc" },
+  })
+  const changes = toggleLog?.changes as Record<string, { before: unknown; after: unknown }> | null
+  if (changes?.document?.after !== targetDoc.documentTypeName || !changes?.documentReceived) {
+    throw new Error(`Toggle audit row must name the document, got ${JSON.stringify(changes)}`)
+  }
+  console.log(`[PASS] toggle audit row names "${targetDoc.documentTypeName}"`)
+
   console.log("=== ALL CLAIM DOCUMENTS & FOLLOWUPS E2E TESTS PASSED ===")
 }
 

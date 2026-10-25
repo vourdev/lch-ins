@@ -28,6 +28,8 @@ export interface AuditEntry {
   action: AuditAction
   before?: Snapshot
   after?: Snapshot
+  /** Unchanged fields stored with the diff so the row names what changed, e.g. a document title. */
+  context?: Record<string, unknown>
 }
 
 /**
@@ -83,7 +85,14 @@ export async function recordAudit(
   const client = isTx ? (first as Prisma.TransactionClient) : prisma
   const entry = isTx ? second : (first as AuditEntry)
 
-  const changes = diffChanges(entry.before, entry.after)
+  const diff = diffChanges(entry.before, entry.after)
+  const context = Object.fromEntries(
+    Object.entries(entry.context ?? {}).map(([k, v]) => {
+      const value = toJson(v)
+      return [k, { before: value, after: value }]
+    })
+  )
+  const changes = Object.keys(diff).length ? { ...context, ...diff } : diff
   return client.auditLog.create({
     data: {
       userId: entry.userId,

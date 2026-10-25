@@ -1,6 +1,7 @@
 import "server-only"
 
 import type { AuditAction, Prisma } from "@/lib/generated/prisma/client"
+import { ENTITY_LABELS } from "@/components/audit/audit-fields"
 import { prisma } from "@/lib/prisma"
 import {
   diffChanges,
@@ -293,6 +294,7 @@ export interface ListAuditLogsParams {
   entity?: string
   action?: AuditAction
   userId?: string
+  /** "YYYY-MM-DD", read as a WIB calendar day. */
   startDate?: string
   endDate?: string
   page?: number
@@ -307,100 +309,88 @@ export interface ListAuditLogsResult {
   totalPages: number
 }
 
-/**
- * Query audit logs with search, multi-attribute filtering, and pagination.
- */
-export async function listAuditLogs(
-  params: ListAuditLogsParams = {}
-): Promise<ListAuditLogsResult> {
-  const page = Math.max(1, params.page ?? 1)
-  const pageSize = Math.min(100, Math.max(1, params.pageSize ?? 50))
-  const skip = (page - 1) * pageSize
+const auditInclude = {
+  user: { select: { id: true, name: true, email: true, jobTitle: true } },
+} satisfies Prisma.AuditLogInclude
 
+/** Export is a full download of the filtered result, capped to keep the response small. */
+const EXPORT_LIMIT = 5000
+
+function buildAuditWhere(params: ListAuditLogsParams): Prisma.AuditLogWhereInput {
   const where: Prisma.AuditLogWhereInput = {}
 
-  if (params.entity && params.entity.trim()) {
+  if (params.entity?.trim()) {
     where.entity = { equals: params.entity.trim(), mode: "insensitive" }
   }
+  if (params.action) where.action = params.action
+  if (params.userId?.trim()) where.userId = params.userId.trim()
 
-  if (params.action) {
-    where.action = params.action
-  }
-
-  if (params.userId && params.userId.trim()) {
-    where.userId = params.userId.trim()
-  }
-
+  // Day boundaries follow WIB, not the server zone (UTC on Vercel).
   if (params.startDate || params.endDate) {
     where.createdAt = {}
-    if (params.startDate) {
-      const start = new Date(params.startDate)
-      start.setHours(0, 0, 0, 0)
-      where.createdAt.gte = start
-    }
-    if (params.endDate) {
-      const end = new Date(params.endDate)
-      end.setHours(23, 59, 59, 999)
-      where.createdAt.lte = end
-    }
+    if (params.startDate) where.createdAt.gte = new Date(`${params.startDate}T00:00:00+07:00`)
+    if (params.endDate) where.createdAt.lte = new Date(`${params.endDate}T23:59:59.999+07:00`)
   }
 
-  if (params.search && params.search.trim()) {
-    const q = params.search.trim()
-    const isUuid = UUID_PATTERN.test(q)
+  const q = params.search?.trim()
+  if (q) {
+    const lower = q.toLowerCase()
+    // Users search by the module name they see, so match labels back to entity codes.
+    const entities = Object.entries(ENTITY_LABELS)
+      .filter(([code, label]) => label.toLowerCase().includes(lower) || code.includes(lower))
+      .map(([code]) => code)
 
     where.OR = [
-      {
-        user: {
-          name: { contains: q, mode: "insensitive" },
-        },
-      },
-      {
-        user: {
-          email: { contains: q, mode: "insensitive" },
-        },
-      },
-      {
-        entity: { contains: q, mode: "insensitive" },
-      },
-      ...(isUuid
-        ? [
-            { entityId: { equals: q } },
-            { id: { equals: q } },
-          ]
-        : []),
+      { user: { name: { contains: q, mode: "insensitive" } } },
+      { user: { email: { contains: q, mode: "insensitive" } } },
+      { user: { jobTitle: { contains: q, mode: "insensitive" } } },
+      ...(entities.length ? [{ entity: { in: entities } }] : []),
+      ...(UUID_PATTERN.test(q) ? [{ entityId: q }, { id: q }] : []),
     ]
   }
 
-  const [total, rows] = await Promise.all([
-    prisma.auditLog.count({ where }),
-    prisma.auditLog.findMany({
-      where,
-      orderBy: { createdAt: "desc" },
-      skip,
-      take: pageSize,
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            jobTitle: true,
-          },
-        },
-      },
-    }),
-  ])
+  return where
+}
 
-  const items = await toAuditRecords(rows)
+export async function listAuditLogs(
+  params: ListAuditLogsParams = {}
+): Promise<ListAuditLogsResult> {
+  const pageSize = Math.min(100, Math.max(1, params.pageSize ?? 50))
+  const where = buildAuditWhere(params)
+  const total = await prisma.auditLog.count({ where })
+  const totalPages = Math.max(1, Math.ceil(total / pageSize))
+  // A stale URL can point past the last page after filters narrow the result.
+  const page = Math.min(totalPages, Math.max(1, params.page ?? 1))
 
-  return {
-    items,
-    total,
-    page,
-    pageSize,
-    totalPages: Math.ceil(total / pageSize) || 1,
-  }
+  const rows = await prisma.auditLog.findMany({
+    where,
+    orderBy: { createdAt: "desc" },
+    skip: (page - 1) * pageSize,
+    take: pageSize,
+    include: auditInclude,
+  })
+
+  return { items: await toAuditRecords(rows), total, page, pageSize, totalPages }
+}
+
+export async function listAuditLogsForExport(
+  params: Omit<ListAuditLogsParams, "page" | "pageSize">
+): Promise<AuditLogRecord[]> {
+  const rows = await prisma.auditLog.findMany({
+    where: buildAuditWhere(params),
+    orderBy: { createdAt: "desc" },
+    take: EXPORT_LIMIT,
+    include: auditInclude,
+  })
+  return toAuditRecords(rows)
+}
+
+/** Every account, so an admin can check users who have no activity yet. */
+export async function listAuditUsers(): Promise<{ id: string; name: string }[]> {
+  return prisma.user.findMany({
+    select: { id: true, name: true },
+    orderBy: { name: "asc" },
+  })
 }
 
 /**

@@ -73,11 +73,11 @@ export function ExportButtons<T>({
     }
     setBusy(true)
     try {
-      if (kind === "xlsx") await exportXlsx(spec)
-      else exportCsv(spec)
-      toast.success(
-        `${spec.rows.length} baris diexport ke ${kind.toUpperCase()}`
-      )
+      const rows = spec.loadRows ? await spec.loadRows() : spec.rows
+      const full = { ...spec, rows }
+      if (kind === "xlsx") await exportXlsx(full)
+      else exportCsv(full)
+      toast.success(`${rows.length} baris diexport ke ${kind.toUpperCase()}`)
     } catch (error) {
       console.error(error)
       toast.error("Export gagal, coba lagi")

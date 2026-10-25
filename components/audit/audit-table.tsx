@@ -1,20 +1,21 @@
 "use client"
 
 import * as React from "react"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { Eye, Layers, RotateCcw } from "lucide-react"
 
+import { exportAuditLogsAction } from "@/app/(app)/audit-trail/actions"
 import { AuditDiffDialog } from "@/components/audit/audit-diff-dialog"
 import {
   ACTION_LABELS,
   actionLabel,
   changeSummary,
   entityLabel,
-  fieldLabel,
-  visibleChangeKeys,
 } from "@/components/audit/audit-fields"
+import { AUDIT_PAGE_SIZES, type AuditFilter } from "@/components/audit/audit-filter"
 import { StatusBadge } from "@/components/shared/status-badge"
 import { TableEmpty } from "@/components/shared/table-empty"
-import { TablePagination, usePagination } from "@/components/shared/table-pagination"
+import { TablePagination } from "@/components/shared/table-pagination"
 import { ExportButtons, SearchInput } from "@/components/shared/table-toolbar"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
@@ -36,103 +37,94 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import type { ExportSpec } from "@/lib/export"
-import type { AuditLogRecord } from "@/lib/server/audit"
+import type { AuditLogRecord, ListAuditLogsResult } from "@/lib/server/audit"
 
 export interface AuditTableProps {
-  initialLogs: AuditLogRecord[]
-  availableEntities?: string[]
+  result: ListAuditLogsResult
+  filter: AuditFilter
+  availableEntities: string[]
+  users: { id: string; name: string }[]
 }
 
+const ALL = "all"
+
 const ACTION_OPTIONS = [
-  { label: "Semua Aksi", value: "all" },
+  { label: "Semua Aksi", value: ALL },
   ...Object.entries(ACTION_LABELS).map(([value, label]) => ({ label, value })),
 ]
 
 export function AuditTable({
-  initialLogs,
-  availableEntities = [],
+  result,
+  filter,
+  availableEntities,
+  users,
 }: AuditTableProps) {
-  const [query, setQuery] = React.useState("")
-  const [actionFilter, setActionFilter] = React.useState("all")
-  const [entityFilter, setEntityFilter] = React.useState("all")
-  const [startDate, setStartDate] = React.useState("")
-  const [endDate, setEndDate] = React.useState("")
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const [query, setQuery] = React.useState(filter.search)
   const [selectedLog, setSelectedLog] = React.useState<AuditLogRecord | null>(null)
 
-  const entityOptions = React.useMemo(() => {
-    const list = Array.from(
-      new Set([...availableEntities, ...initialLogs.map((l) => l.entity)])
-    ).filter(Boolean)
-    return [
-      { label: "Semua Modul", value: "all" },
-      ...list.map((ent) => ({
-        label: entityLabel(ent),
-        value: ent,
-      })),
-    ]
-  }, [availableEntities, initialLogs])
+  const entityOptions = [
+    { label: "Semua Modul", value: ALL },
+    ...availableEntities.map((ent) => ({ label: entityLabel(ent), value: ent })),
+  ]
+  const userOptions = [
+    { label: "Semua Pengguna", value: ALL },
+    ...users.map((u) => ({ label: u.name, value: u.id })),
+  ]
 
-  const filteredLogs = React.useMemo(() => {
-    const q = query.trim().toLowerCase()
-    return initialLogs.filter((log) => {
-      if (actionFilter !== "all" && log.action !== actionFilter) {
-        return false
+  /** Filters live in the URL so the server can query the full log table. */
+  const push = React.useCallback(
+    (patch: Record<string, string>) => {
+      const next = new URLSearchParams(searchParams.toString())
+      for (const [k, v] of Object.entries(patch)) {
+        if (v) next.set(k, v)
+        else next.delete(k)
       }
-      if (
-        entityFilter !== "all" &&
-        log.entity.toLowerCase() !== entityFilter.toLowerCase()
-      ) {
-        return false
-      }
-      if (startDate) {
-        const logDate = log.createdAt.slice(0, 10)
-        if (logDate < startDate) return false
-      }
-      if (endDate) {
-        const logDate = log.createdAt.slice(0, 10)
-        if (logDate > endDate) return false
-      }
-      if (!q) return true
+      // A new filter always starts from the first page.
+      if (!("page" in patch)) next.delete("page")
+      router.push(next.size ? `${pathname}?${next}` : pathname)
+    },
+    [pathname, router, searchParams]
+  )
 
-      return [
-        log.userName,
-        log.userEmail,
-        log.userJobTitle,
-        log.entityLabel,
-        entityLabel(log.entity),
-        ...visibleChangeKeys(log).map(fieldLabel),
-      ].some((text) => text?.toLowerCase().includes(q))
-    })
-  }, [initialLogs, query, actionFilter, entityFilter, startDate, endDate])
-
-  const {
-    page,
-    pageSize,
-    totalItems,
-    paginatedItems: paginatedRows,
-    setPage,
-    setPageSize,
-  } = usePagination(filteredLogs, 15)
+  React.useEffect(() => {
+    if (query === filter.search) return
+    const t = setTimeout(() => push({ q: query }), 350)
+    return () => clearTimeout(t)
+  }, [query, filter.search, push])
 
   function resetFilters() {
     setQuery("")
-    setActionFilter("all")
-    setEntityFilter("all")
-    setStartDate("")
-    setEndDate("")
+    router.push(pathname)
   }
 
   const hasActiveFilters =
-    Boolean(query) ||
-    actionFilter !== "all" ||
-    entityFilter !== "all" ||
-    Boolean(startDate) ||
-    Boolean(endDate)
+    Boolean(filter.search) ||
+    Boolean(filter.action) ||
+    Boolean(filter.entity) ||
+    Boolean(filter.userId) ||
+    Boolean(filter.startDate) ||
+    Boolean(filter.endDate)
 
   const exportSpec: ExportSpec<AuditLogRecord> = {
     filename: "audit-trail-lch",
     sheet: "AuditTrail",
-    rows: filteredLogs,
+    rows: result.items,
+    loadRows: async () => {
+      const { search, action, entity, userId, startDate, endDate } = filter
+      const res = await exportAuditLogsAction({
+        search,
+        action,
+        entity,
+        userId,
+        startDate,
+        endDate,
+      })
+      if (!res.ok) throw new Error(res.error)
+      return res.data
+    },
     columns: [
       {
         header: "Waktu",
@@ -159,7 +151,7 @@ export function AuditTable({
           <SearchInput
             value={query}
             onValueChange={setQuery}
-            placeholder="Cari pengguna, data, atau perubahan…"
+            placeholder="Cari pengguna atau modul…"
             className="w-full sm:max-w-xs"
           />
 
@@ -182,8 +174,8 @@ export function AuditTable({
         <div className="flex flex-wrap items-center gap-2 border-t pt-3">
           <Select
             items={ACTION_OPTIONS}
-            value={actionFilter}
-            onValueChange={(val) => setActionFilter(val ?? "all")}
+            value={filter.action ?? ALL}
+            onValueChange={(v) => push({ action: v === ALL ? "" : (v ?? "") })}
           >
             <SelectTrigger size="sm" className="w-37" aria-label="Filter aksi">
               <SelectValue />
@@ -201,8 +193,8 @@ export function AuditTable({
 
           <Select
             items={entityOptions}
-            value={entityFilter}
-            onValueChange={(val) => setEntityFilter(val ?? "all")}
+            value={filter.entity || ALL}
+            onValueChange={(v) => push({ entity: v === ALL ? "" : (v ?? "") })}
           >
             <SelectTrigger size="sm" className="w-42" aria-label="Filter modul">
               <SelectValue />
@@ -218,11 +210,30 @@ export function AuditTable({
             </SelectContent>
           </Select>
 
+          <Select
+            items={userOptions}
+            value={filter.userId || ALL}
+            onValueChange={(v) => push({ user: v === ALL ? "" : (v ?? "") })}
+          >
+            <SelectTrigger size="sm" className="w-42" aria-label="Filter pengguna">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                {userOptions.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+
           <div className="flex items-center gap-1.5">
             <Input
               type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
+              value={filter.startDate}
+              onChange={(e) => push({ from: e.target.value })}
               aria-label="Dari tanggal"
               className="h-8 w-38"
             />
@@ -231,15 +242,15 @@ export function AuditTable({
             </span>
             <Input
               type="date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
+              value={filter.endDate}
+              onChange={(e) => push({ to: e.target.value })}
               aria-label="Sampai tanggal"
               className="h-8 w-38"
             />
           </div>
 
           <span className="ml-auto text-xs text-muted-foreground font-medium">
-            {totalItems} log ditemukan
+            {result.total} log ditemukan
           </span>
         </div>
       </div>
@@ -258,7 +269,7 @@ export function AuditTable({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredLogs.length === 0 ? (
+            {result.items.length === 0 ? (
               <TableEmpty
                 colSpan={7}
                 message={
@@ -268,7 +279,7 @@ export function AuditTable({
                 }
               />
             ) : (
-              paginatedRows.map((log) => {
+              result.items.map((log) => {
                 return (
                   <TableRow key={log.id} className="text-xs">
                     <TableCell className="tabular text-muted-foreground font-mono">
@@ -327,12 +338,12 @@ export function AuditTable({
       </Card>
 
       <TablePagination
-        page={page}
-        pageSize={pageSize}
-        totalItems={totalItems}
-        onPageChange={setPage}
-        onPageSizeChange={setPageSize}
-        pageSizeOptions={[15, 30, 50, 100]}
+        page={result.page}
+        pageSize={result.pageSize}
+        totalItems={result.total}
+        onPageChange={(p) => push({ page: String(p) })}
+        onPageSizeChange={(s) => push({ size: String(s) })}
+        pageSizeOptions={AUDIT_PAGE_SIZES}
         itemName="Log Audit"
       />
 

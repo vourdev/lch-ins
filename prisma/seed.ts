@@ -10,7 +10,7 @@
  * - zona-gempa-ojk.csv     511 kabupaten dan kota beserta zona gempanya
  * - skala-bi-ojk.csv       persentase tarif menurut indemnity period
  * - clause-wording-lch.csv 607 klausul dari pustaka wording LCH
- * - kendaraan.csv          merek dan tipe kendaraan umum di Indonesia
+ * - kendaraan.csv          10 merek mobil terlaris 2026 (Gaikindo) dan model populernya
  *
  * Jalankan: npm run db:seed
  */
