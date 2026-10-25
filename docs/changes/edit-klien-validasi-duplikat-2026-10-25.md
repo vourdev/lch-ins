@@ -2,7 +2,7 @@
 
 - **Tanggal:** 2026-10-25
 - **Branch:** `fix/edit-klien-duplikat-nama`
-- **PR:** (isi setelah PR dibuka)
+- **PR:** #28
 - **Dikerjakan oleh:** ZoD3V dengan Claude Code
 
 ## Latar belakang
