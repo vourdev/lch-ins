@@ -13,7 +13,7 @@ import {
 } from "@/components/documents/letterhead"
 import { PrintedAt } from "@/components/documents/printed-at"
 import { SPPA_QUESTIONS, type Client, type Sppa } from "@/lib/data"
-import { dateLong, money } from "@/lib/format"
+import { dateLong, dateShort, money, num } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
 /* Warna mengikuti form KYC cetak LCH, jadi sengaja tidak ikut tema aplikasi. */
@@ -431,6 +431,173 @@ export function SppaKycDocument({
     <DocumentShell backHref="/marketing?tab=sppa">
       <KycForm client={client} fallbackName={clientName} today={today} />
       <SppaDetail sppa={sppa} clientName={clientName} today={today} />
+    </DocumentShell>
+  )
+}
+
+/**
+ * Cetak keseluruhan tabel SPPA berformat lembar kerja (Excel spreadsheet).
+ * Menampilkan grid sel bergaris penuh, header abu-abu rapat,
+ * angka pertanggungan rata kanan, dan baris total di bagian bawah.
+ */
+export function SppaExcelDocument({
+  rows,
+  today,
+  query,
+  backHref = "/marketing?tab=sppa",
+}: {
+  rows: Sppa[]
+  today: string
+  query?: string
+  backHref?: string
+}) {
+  const totalsByCurrency = rows.reduce<Record<string, number>>((acc, s) => {
+    const cur = s.currency || "IDR"
+    acc[cur] = (acc[cur] ?? 0) + (s.sumInsured ?? 0)
+    return acc
+  }, {})
+
+  const totalEntries = Object.entries(totalsByCurrency)
+
+  return (
+    <DocumentShell wide backHref={backHref}>
+      <Letterhead />
+      <DocTitle
+        title="DAFTAR SURAT PERMINTAAN PENUTUPAN ASURANSI (SPPA)"
+        number={`Dicetak: ${dateLong(today)}${query ? ` · Filter: "${query}"` : ""} · Total: ${rows.length} SPPA`}
+        muted
+      />
+
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse border border-neutral-400 text-[10.5px] leading-tight text-neutral-900 dark:border-neutral-600 dark:text-neutral-100">
+          <thead>
+            <tr className="border-b-2 border-neutral-700 bg-neutral-100 text-left dark:border-neutral-400 dark:bg-neutral-800">
+              <th className="w-8 border border-neutral-400 px-2 py-1.5 text-center font-bold">
+                No.
+              </th>
+              <th className="w-20 border border-neutral-400 px-2 py-1.5 text-center font-bold whitespace-nowrap">
+                Tanggal
+              </th>
+              <th className="border border-neutral-400 px-2 py-1.5 font-bold">
+                Nama Tertanggung
+              </th>
+              <th className="w-24 border border-neutral-400 px-2 py-1.5 font-bold">
+                COB
+              </th>
+              <th className="border border-neutral-400 px-2 py-1.5 font-bold">
+                Type of Cover
+              </th>
+              <th className="border border-neutral-400 px-2 py-1.5 font-bold">
+                Lokasi Risiko
+              </th>
+              <th className="w-14 border border-neutral-400 px-2 py-1.5 text-center font-bold">
+                Mata Uang
+              </th>
+              <th className="w-32 border border-neutral-400 px-2 py-1.5 text-right font-bold whitespace-nowrap">
+                Nilai Pertanggungan
+              </th>
+              <th className="w-28 border border-neutral-400 px-2 py-1.5 text-center font-bold whitespace-nowrap">
+                Periode Asuransi
+              </th>
+              <th className="w-18 border border-neutral-400 px-2 py-1.5 text-center font-bold">
+                Status
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.length === 0 ? (
+              <tr>
+                <td
+                  colSpan={10}
+                  className="border border-neutral-400 py-8 text-center text-muted-foreground"
+                >
+                  Tidak ada data SPPA.
+                </td>
+              </tr>
+            ) : (
+              rows.map((s, idx) => {
+                const period =
+                  s.periodStart && s.periodEnd
+                    ? `${dateShort(s.periodStart)} - ${dateShort(s.periodEnd)}`
+                    : "—"
+
+                return (
+                  <tr
+                    key={s.id}
+                    className="even:bg-neutral-50/70 hover:bg-neutral-100/50 dark:even:bg-neutral-900/40"
+                  >
+                    <td className="border border-neutral-300 px-2 py-1.5 text-center text-muted-foreground dark:border-neutral-700">
+                      {idx + 1}
+                    </td>
+                    <td className="border border-neutral-300 px-2 py-1.5 text-center whitespace-nowrap dark:border-neutral-700">
+                      {s.createdAt ? dateShort(s.createdAt) : "—"}
+                    </td>
+                    <td className="border border-neutral-300 px-2 py-1.5 font-medium dark:border-neutral-700">
+                      {s.insuredName}
+                    </td>
+                    <td className="border border-neutral-300 px-2 py-1.5 dark:border-neutral-700">
+                      {s.cob}
+                    </td>
+                    <td className="border border-neutral-300 px-2 py-1.5 dark:border-neutral-700">
+                      {s.typeOfCover || "—"}
+                    </td>
+                    <td className="border border-neutral-300 px-2 py-1.5 dark:border-neutral-700">
+                      {s.riskLocation || "—"}
+                    </td>
+                    <td className="border border-neutral-300 px-2 py-1.5 text-center font-mono font-medium dark:border-neutral-700">
+                      {s.currency}
+                    </td>
+                    <td className="border border-neutral-300 px-2 py-1.5 text-right font-mono font-medium tabular-nums dark:border-neutral-700">
+                      {num(s.sumInsured ?? 0)}
+                    </td>
+                    <td className="border border-neutral-300 px-2 py-1.5 text-center whitespace-nowrap dark:border-neutral-700">
+                      {period}
+                    </td>
+                    <td className="border border-neutral-300 px-2 py-1.5 text-center dark:border-neutral-700">
+                      <span
+                        className={cn(
+                          "inline-block rounded px-1.5 py-0.5 text-[9.5px] font-semibold border",
+                          s.status === "Submitted"
+                            ? "bg-emerald-50 text-emerald-700 border-emerald-300 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800"
+                            : "bg-amber-50 text-amber-700 border-amber-300 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-800"
+                        )}
+                      >
+                        {s.status}
+                      </span>
+                    </td>
+                  </tr>
+                )
+              })
+            )}
+          </tbody>
+          {rows.length > 0 ? (
+            <tfoot className="border-t-2 border-b-2 border-neutral-700 bg-neutral-100 font-bold dark:border-neutral-400 dark:bg-neutral-800">
+              {totalEntries.map(([curr, sum], i) => (
+                <tr key={curr}>
+                  <td
+                    colSpan={6}
+                    className="border border-neutral-400 px-2 py-1.5 text-right"
+                  >
+                    {i === 0 ? `TOTAL (${rows.length} SPPA)` : ""}
+                  </td>
+                  <td className="border border-neutral-400 px-2 py-1.5 text-center font-mono">
+                    {curr}
+                  </td>
+                  <td className="border border-neutral-400 px-2 py-1.5 text-right font-mono tabular-nums">
+                    {num(sum)}
+                  </td>
+                  <td
+                    colSpan={2}
+                    className="border border-neutral-400 px-2 py-1.5"
+                  />
+                </tr>
+              ))}
+            </tfoot>
+          ) : null}
+        </table>
+      </div>
+
+      <PrintedAt />
     </DocumentShell>
   )
 }

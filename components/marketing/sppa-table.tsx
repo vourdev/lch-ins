@@ -148,6 +148,14 @@ export function SppaTable({
     return actions
   }
 
+  const printHref = React.useMemo(() => {
+    const params = new URLSearchParams()
+    if (query.trim()) params.set("q", query.trim())
+    if (clientId) params.set("clientId", clientId)
+    const qs = params.toString()
+    return qs ? `/marketing/sppa?${qs}` : "/marketing/sppa"
+  }, [query, clientId])
+
   const exportSpec: ExportSpec<Sppa> = {
     filename: "sppa-lch",
     sheet: "SPPA",
@@ -181,7 +189,9 @@ export function SppaTable({
           />
         ) : null}
         <div className="ml-auto flex flex-wrap items-center gap-2">
-          {!compact ? <ExportButtons spec={exportSpec} /> : null}
+          {!compact ? (
+            <ExportButtons spec={exportSpec} printHref={printHref} />
+          ) : null}
           <Button
             size="sm"
             onClick={() =>
