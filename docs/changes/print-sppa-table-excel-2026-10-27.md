@@ -2,7 +2,7 @@
 
 - **Tanggal:** 2026-10-27
 - **Branch:** `feat/print-sppa-table-excel`
-- **PR:** # (diisi setelah PR dibuka)
+- **PR:** #31
 - **Dikerjakan oleh:** ZoD3V dengan Claude
 
 ## Latar belakang
