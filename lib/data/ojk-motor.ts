@@ -1,9 +1,8 @@
 /**
- * Tarif kendaraan bermotor (SE OJK 6/SEOJK.05/2017 Lampiran II). Dimuat
- * bersama panel referensi tarif saja.
+ * Motor vehicle statutory tariffs (SE OJK No. 6/SEOJK.05/2017 Appendix IV).
  */
 
-/** Batas maksimal biaya akuisisi / brokerage KBM sesuai SEOJK No. 6/SEOJK.05/2017 */
+/** Maximum acquisition cost / brokerage cap for motor vehicle business (SEOJK No. 6/SEOJK.05/2017) */
 export const MOTOR_ACQUISITION_CAP_PCT = 25
 
 export interface MotorTariff {

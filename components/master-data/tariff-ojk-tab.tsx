@@ -215,10 +215,10 @@ export function TariffOjkTab({
         </>
       )}
 
-      {/* 2. Kendaraan Bermotor (Lampiran IV) */}
+      {/* Motor vehicle statutory tariffs (Lampiran IV) */}
       {activeSubTab === "motor" && (
         <div className="flex flex-col gap-6">
-          {/* Header Info & Regulatory Caps */}
+          {/* Regulatory notice and acquisition cap */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-lg border bg-muted/40 p-3.5 text-xs text-muted-foreground">
             <div>
               <p className="font-semibold text-foreground">
@@ -235,7 +235,7 @@ export function TariffOjkTab({
             </div>
           </div>
 
-          {/* Tabel IV.A: Tarif Pokok Casco */}
+          {/* Table IV.A: Basic Casco tariffs */}
           <div className="flex flex-col gap-2">
             <div>
               <h3 className="text-sm font-semibold text-foreground">
@@ -290,7 +290,7 @@ export function TariffOjkTab({
             </Card>
           </div>
 
-          {/* Tabel IV.B: Perluasan Jaminan */}
+          {/* Table IV.B: Extension coverage tariffs */}
           <div className="flex flex-col gap-2">
             <div>
               <h3 className="text-sm font-semibold text-foreground">
