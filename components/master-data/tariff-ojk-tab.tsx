@@ -4,6 +4,7 @@ import * as React from "react"
 import { SearchInput } from "@/components/shared/table-toolbar"
 import { TableEmpty } from "@/components/shared/table-empty"
 import { TablePagination, usePagination } from "@/components/shared/table-pagination"
+import { Badge } from "@/components/ui/badge"
 import { Card } from "@/components/ui/card"
 import {
   Table,
@@ -14,6 +15,11 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import {
+  MOTOR_TARIFFS,
+  MOTOR_EXTENSION_TARIFFS,
+  MOTOR_ACQUISITION_CAP_PCT,
+} from "@/lib/data/ojk-motor"
 import type {
   BiScale,
   TariffEqProperty,
@@ -28,6 +34,17 @@ export interface TariffOjkTabProps {
   biScales: BiScale[]
 }
 
+interface GroupedMotorTariff {
+  category: string
+  vehicle: string
+  sumInsuredBand: string
+  region: string
+  compMin: number | null
+  compMax: number | null
+  tloMin: number | null
+  tloMax: number | null
+}
+
 export function TariffOjkTab({
   initialOccupations,
   tariffEqProperty,
@@ -35,9 +52,43 @@ export function TariffOjkTab({
   biScales,
 }: TariffOjkTabProps) {
   const [activeSubTab, setActiveSubTab] = React.useState<
-    "occupation" | "earthquake" | "flood" | "biscale"
+    "occupation" | "motor" | "earthquake" | "flood" | "biscale"
   >("occupation")
   const [query, setQuery] = React.useState("")
+
+  const formatZone = (zone: string) => {
+    if (!zone) return "—"
+    return zone.toLowerCase().startsWith("zona") ? zone : `Zona ${zone}`
+  }
+
+  const groupedMotorTariffs = React.useMemo(() => {
+    const map = new Map<string, GroupedMotorTariff>()
+    for (const t of MOTOR_TARIFFS) {
+      const key = `${t.category}__${t.region}`
+      let existing = map.get(key)
+      if (!existing) {
+        existing = {
+          category: t.category,
+          vehicle: t.vehicle,
+          sumInsuredBand: t.sumInsuredBand,
+          region: t.region,
+          compMin: null,
+          compMax: null,
+          tloMin: null,
+          tloMax: null,
+        }
+        map.set(key, existing)
+      }
+      if (t.cover === "Comprehensive") {
+        existing.compMin = t.min
+        existing.compMax = t.max
+      } else if (t.cover === "Total Loss Only") {
+        existing.tloMin = t.min
+        existing.tloMax = t.max
+      }
+    }
+    return Array.from(map.values())
+  }, [])
 
   const filteredOccupations = React.useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -64,7 +115,7 @@ export function TariffOjkTab({
           value={activeSubTab}
           onValueChange={(val) =>
             setActiveSubTab(
-              val as "occupation" | "earthquake" | "flood" | "biscale"
+              val as "occupation" | "motor" | "earthquake" | "flood" | "biscale"
             )
           }
         >
@@ -72,11 +123,14 @@ export function TariffOjkTab({
             <TabsTrigger value="occupation" className="text-xs">
               Okupasi & Properti (Lamp. I)
             </TabsTrigger>
-            <TabsTrigger value="earthquake" className="text-xs">
-              Gempa Bumi (Lamp. III)
+            <TabsTrigger value="motor" className="text-xs">
+              Kendaraan Bermotor (Lamp. IV)
             </TabsTrigger>
             <TabsTrigger value="flood" className="text-xs">
               Banjir (Lamp. II)
+            </TabsTrigger>
+            <TabsTrigger value="earthquake" className="text-xs">
+              Gempa Bumi (Lamp. III)
             </TabsTrigger>
             <TabsTrigger value="biscale" className="text-xs">
               Skala BI
@@ -161,7 +215,139 @@ export function TariffOjkTab({
         </>
       )}
 
-      {/* 2. Gempa Bumi */}
+      {/* 2. Kendaraan Bermotor (Lampiran IV) */}
+      {activeSubTab === "motor" && (
+        <div className="flex flex-col gap-6">
+          {/* Header Info & Regulatory Caps */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-lg border bg-muted/40 p-3.5 text-xs text-muted-foreground">
+            <div>
+              <p className="font-semibold text-foreground">
+                SE OJK No. 6/SEOJK.05/2017 Lampiran IV
+              </p>
+              <p className="mt-0.5">
+                Penetapan Tarif Premi Lini Usaha Asuransi Kendaraan Bermotor (Tabel IV.A &amp; Tabel IV.B)
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Badge variant="secondary" className="font-mono text-xs">
+                Maks. Biaya Akuisisi {MOTOR_ACQUISITION_CAP_PCT}%
+              </Badge>
+            </div>
+          </div>
+
+          {/* Tabel IV.A: Tarif Pokok Casco */}
+          <div className="flex flex-col gap-2">
+            <div>
+              <h3 className="text-sm font-semibold text-foreground">
+                Tabel IV.A — Tarif Baku Casco (Comprehensive &amp; Total Loss Only)
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                Tarif premi bruto tahunan berdasarkan kategori kendaraan, wilayah operasional, dan batas bawah – batas atas OJK.
+              </p>
+            </div>
+            <Card className="gap-0 overflow-hidden py-0">
+              <Table className="min-w-200">
+                <TableHeader>
+                  <TableRow className="hover:bg-transparent">
+                    <TableHead className="w-56">Kategori &amp; Jenis Kendaraan</TableHead>
+                    <TableHead className="w-60">Uang Pertanggungan (TSI)</TableHead>
+                    <TableHead>Wilayah Operasional</TableHead>
+                    <TableHead className="w-44 text-center">Comprehensive (%)</TableHead>
+                    <TableHead className="w-44 text-center">Total Loss Only (%)</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {groupedMotorTariffs.map((t, idx) => (
+                    <TableRow key={`${t.category}-${t.region}-${idx}`} className="text-xs hover:bg-muted/40">
+                      <TableCell>
+                        <span className="font-semibold text-foreground block">
+                          {t.category}
+                        </span>
+                        <span className="text-[11px] text-muted-foreground">
+                          {t.vehicle}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground font-mono text-[11px]">
+                        {t.sumInsuredBand}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {t.region}
+                      </TableCell>
+                      <TableCell className="text-center font-mono font-medium text-foreground">
+                        {t.compMin !== null && t.compMax !== null
+                          ? `${t.compMin}% – ${t.compMax}%`
+                          : "—"}
+                      </TableCell>
+                      <TableCell className="text-center font-mono font-medium text-foreground">
+                        {t.tloMin !== null && t.tloMax !== null
+                          ? `${t.tloMin}% – ${t.tloMax}%`
+                          : "—"}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </Card>
+          </div>
+
+          {/* Tabel IV.B: Perluasan Jaminan */}
+          <div className="flex flex-col gap-2">
+            <div>
+              <h3 className="text-sm font-semibold text-foreground">
+                Tabel IV.B — Batas Tarif Perluasan Jaminan Kendaraan Bermotor
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                Tarif baku premi perluasan jaminan (Banjir, Gempa Bumi, SRCC, TS, TJH Pihak Ketiga, dan Kecelakaan Diri).
+              </p>
+            </div>
+            <Card className="gap-0 overflow-hidden py-0">
+              <Table className="min-w-200">
+                <TableHeader>
+                  <TableRow className="hover:bg-transparent">
+                    <TableHead className="w-60">Perluasan Jaminan</TableHead>
+                    <TableHead className="w-36">Polis Induk</TableHead>
+                    <TableHead className="w-48">Dasar Pengenaan</TableHead>
+                    <TableHead className="w-44 text-center">Tarif Resmi OJK</TableHead>
+                    <TableHead>Ketentuan Regulasi / Batas Santunan</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {MOTOR_EXTENSION_TARIFFS.map((ext, idx) => {
+                    const rateDisplay =
+                      ext.min !== null
+                        ? ext.min === ext.max
+                          ? `${ext.min}%`
+                          : `${ext.min}% – ${ext.max}%`
+                        : "Ditentukan Underwriter"
+
+                    return (
+                      <TableRow key={`${ext.cover}-${ext.policyType}-${idx}`} className="text-xs hover:bg-muted/40">
+                        <TableCell className="font-semibold text-foreground">
+                          {ext.cover}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground font-mono text-[11px]">
+                          {ext.policyType || "Comprehensive & TLO"}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground text-[11px]">
+                          {ext.basis}
+                        </TableCell>
+                        <TableCell className="text-center font-mono font-medium text-foreground">
+                          {rateDisplay}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {ext.note}
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
+                </TableBody>
+              </Table>
+            </Card>
+          </div>
+        </div>
+      )}
+
+      {/* 3. Gempa Bumi */}
       {activeSubTab === "earthquake" && (
         <Card className="gap-0 overflow-hidden py-0">
           <Table className="min-w-200">
@@ -182,7 +368,7 @@ export function TariffOjkTab({
                       {eq.constructionCategory}
                     </TableCell>
                     <TableCell className="text-center font-mono">
-                      Zona {eq.zone}
+                      {formatZone(eq.zone)}
                     </TableCell>
                     <TableCell className="text-right pr-6 font-mono font-medium text-foreground">
                       {Number(eq.rate)}‰
@@ -220,7 +406,7 @@ export function TariffOjkTab({
                     </TableCell>
                     <TableCell>{f.region}</TableCell>
                     <TableCell className="text-center font-mono">
-                      Zona {f.zone}
+                      {formatZone(f.zone)}
                     </TableCell>
                     <TableCell className="text-center font-mono">
                       {f.rateMin !== null ? `${Number(f.rateMin)}%` : "—"}

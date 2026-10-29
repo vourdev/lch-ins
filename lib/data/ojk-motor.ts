@@ -3,6 +3,9 @@
  * bersama panel referensi tarif saja.
  */
 
+/** Batas maksimal biaya akuisisi / brokerage KBM sesuai SEOJK No. 6/SEOJK.05/2017 */
+export const MOTOR_ACQUISITION_CAP_PCT = 25
+
 export interface MotorTariff {
   category: string
   vehicle: string
@@ -371,3 +374,83 @@ export function findMotorExtensionBounds(
 
   return null
 }
+
+export interface ParsedVehicleInfo {
+  licensePlate?: string | null
+  chassisNumber?: string | null
+  engineNumber?: string | null
+  year?: string | null
+  color?: string | null
+  vehicleModel?: string | null
+}
+
+export function parseVehicleDescription(desc?: string | null): ParsedVehicleInfo {
+  if (!desc) return {}
+  const res: ParsedVehicleInfo = {}
+  const term =
+    "(?=\\s*[·|,]\\s*|\\s*/\\s*(?:[A-Za-z\\s.]+:)|\\s*(?:PLAT|Plat|YEARS?|Thn|Tahun|No\\.?\\s*Rangka|Rangka|No\\.?\\s*Mesin|Mesin|Warna|Color|TYPE|Type|Model|Jenis)\\s*[:=]|$)"
+
+  const plateMatch = desc.match(
+    new RegExp(
+      `(?:PLAT\\s*NO\\.?|No\\.?\\s*Pol(?:isi)?|Plat)\\s*[:=]\\s*([A-Za-z0-9\\s]+?)${term}`,
+      "i"
+    )
+  )
+  if (plateMatch) res.licensePlate = plateMatch[1].trim()
+
+  const yearMatch = desc.match(/(?:YEARS?|Tahun|Thn)\s*[:=]?\s*(\d{4})/i)
+  if (yearMatch) res.year = yearMatch[1]
+
+  const chassisMatch = desc.match(
+    new RegExp(
+      `(?:No\\.?\\s*Rangka|Rangka|Chassis|VIN)\\s*[:=]\\s*([A-Za-z0-9]+)${term}`,
+      "i"
+    )
+  )
+  if (chassisMatch) res.chassisNumber = chassisMatch[1].trim()
+
+  const engineMatch = desc.match(
+    new RegExp(
+      `(?:No\\.?\\s*Mesin|Mesin|Engine)\\s*[:=]\\s*([A-Za-z0-9-]+)${term}`,
+      "i"
+    )
+  )
+  if (engineMatch) res.engineNumber = engineMatch[1].trim()
+
+  const colorMatch = desc.match(
+    new RegExp(`(?:Warna|Color)\\s*[:=]\\s*([^·|,]+?)${term}`, "i")
+  )
+  if (colorMatch) res.color = colorMatch[1].trim()
+
+  const modelMatch = desc.match(
+    new RegExp(`(?:TYPE|Type|Model|Jenis)\\s*[:=]\\s*([^·|,]+?)${term}`, "i")
+  )
+  if (modelMatch) res.vehicleModel = modelMatch[1].trim()
+
+  return res
+}
+
+export function buildVehicleDescription(item: {
+  vehicleModel?: string | null
+  year?: number | string | null
+  licensePlate?: string | null
+  chassisNumber?: string | null
+  engineNumber?: string | null
+  color?: string | null
+  description?: string
+}): string {
+  const parts: string[] = []
+  if (item.vehicleModel?.trim()) parts.push(`Model: ${item.vehicleModel.trim()}`)
+  if (item.year) parts.push(`Thn: ${item.year}`)
+  if (item.licensePlate?.trim()) parts.push(`Plat: ${item.licensePlate.trim().toUpperCase()}`)
+  if (item.chassisNumber?.trim()) parts.push(`Rangka: ${item.chassisNumber.trim()}`)
+  if (item.engineNumber?.trim()) parts.push(`Mesin: ${item.engineNumber.trim()}`)
+  if (item.color?.trim()) parts.push(`Warna: ${item.color.trim()}`)
+
+  if (parts.length === 0 && item.description?.trim()) {
+    return item.description.trim()
+  }
+
+  return parts.join(" · ")
+}
+

@@ -378,6 +378,10 @@ export function slipFromSppa(sppa: Sppa, client: Client | null): PlacingSlip {
           vehicleTypeId: sppa.vehicleTypeId ?? null,
           vehicleBrandName: sppa.vehicleBrandName ?? null,
           vehicleTypeName: sppa.vehicleTypeName ?? null,
+          year: sppa.answers?.year ?? null,
+          licensePlate: sppa.answers?.plate ?? null,
+          chassisNumber: sppa.answers?.chassis ?? null,
+          vehicleModel: sppa.answers?.usage ?? null,
         }
       : {}),
   }

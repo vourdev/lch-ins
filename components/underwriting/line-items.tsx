@@ -7,7 +7,12 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { NumberInput } from "@/components/ui/number-input"
 import { Textarea } from "@/components/ui/textarea"
-import type { LineItem, VehicleBrandOption } from "@/lib/data"
+import {
+  buildVehicleDescription,
+  parseVehicleDescription,
+  type LineItem,
+  type VehicleBrandOption,
+} from "@/lib/data"
 import { cn } from "@/lib/utils"
 
 let counter = 0
@@ -85,13 +90,47 @@ export function LineItemList({
             .filter((t) => t.isActive || t.id === item.vehicleTypeId)
             .map((t) => ({ label: t.name, value: t.id }))
 
+          // Parse existing item description if fields are empty
+          const parsed = !item.licensePlate && !item.chassisNumber && item.description
+            ? parseVehicleDescription(item.description)
+            : {}
+
+          const currentPlate = item.licensePlate ?? parsed.licensePlate ?? ""
+          const currentYear = item.year ?? parsed.year ?? ""
+          const currentChassis = item.chassisNumber ?? parsed.chassisNumber ?? ""
+          const currentEngine = item.engineNumber ?? parsed.engineNumber ?? ""
+          const currentColor = item.color ?? parsed.color ?? ""
+          const currentModel = item.vehicleModel ?? parsed.vehicleModel ?? ""
+
+          const handleFieldChange = (field: keyof LineItem, val: string | number | null) => {
+            const patch: Partial<LineItem> = {
+              [field]: val,
+              licensePlate: field === "licensePlate" ? (val as string) : currentPlate,
+              year: field === "year" ? val : currentYear,
+              chassisNumber: field === "chassisNumber" ? (val as string) : currentChassis,
+              engineNumber: field === "engineNumber" ? (val as string) : currentEngine,
+              color: field === "color" ? (val as string) : currentColor,
+              vehicleModel: field === "vehicleModel" ? (val as string) : currentModel,
+            }
+            const autoDesc = buildVehicleDescription({
+              vehicleModel: patch.vehicleModel,
+              year: patch.year,
+              licensePlate: patch.licensePlate,
+              chassisNumber: patch.chassisNumber,
+              engineNumber: patch.engineNumber,
+              color: patch.color,
+            })
+            patch.description = autoDesc
+            update(item.id, patch)
+          }
+
           return (
             <div
               key={item.id}
-              className="flex flex-col gap-2 rounded-lg border bg-card/60 p-2.5 shadow-2xs"
+              className="flex flex-col gap-2.5 rounded-lg border bg-card/60 p-3 shadow-2xs"
             >
               <div className="flex items-center justify-between text-xs text-muted-foreground font-medium">
-                <span>Kendaraan #{index + 1}</span>
+                <span className="font-semibold text-foreground">Kendaraan #{index + 1}</span>
                 {items.length > 1 ? (
                   <Button
                     type="button"
@@ -130,44 +169,90 @@ export function LineItemList({
                 />
               </div>
 
-              <div className="flex items-start gap-2 pt-1">
-                {multiline ? (
-                  <Textarea
-                    rows={2}
-                    className="flex-1 text-xs"
-                    value={item.description}
-                    placeholder={descPlaceholder || "Tahun, No. Polisi, No. Rangka / Mesin"}
-                    onChange={(e) => update(item.id, { description: e.target.value })}
-                  />
-                ) : (
+              {/* Structured vehicle detail fields */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                <div>
+                  <label className="text-[11px] font-medium text-muted-foreground mb-1 block">
+                    Model / Jenis
+                  </label>
                   <Input
-                    className="flex-1 text-xs"
-                    value={item.description}
-                    placeholder={descPlaceholder || "Tahun, No. Polisi, No. Rangka / Mesin"}
-                    onChange={(e) => update(item.id, { description: e.target.value })}
+                    className="text-xs h-8"
+                    value={currentModel}
+                    placeholder="misal: Minibus / Zenix"
+                    onChange={(e) => handleFieldChange("vehicleModel", e.target.value)}
                   />
-                )}
-                <div className="w-44 shrink-0">
+                </div>
+                <div>
+                  <label className="text-[11px] font-medium text-muted-foreground mb-1 block">
+                    Tahun Pembuatan
+                  </label>
+                  <Input
+                    className="text-xs h-8"
+                    value={String(currentYear)}
+                    placeholder="misal: 2023"
+                    maxLength={4}
+                    onChange={(e) => handleFieldChange("year", e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] font-medium text-muted-foreground mb-1 block">
+                    Plat Nomor Polisi
+                  </label>
+                  <Input
+                    className="text-xs h-8 font-mono uppercase"
+                    value={currentPlate}
+                    placeholder="misal: B 1415 DKP"
+                    onChange={(e) => handleFieldChange("licensePlate", e.target.value.toUpperCase())}
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] font-medium text-muted-foreground mb-1 block">
+                    No. Rangka / VIN
+                  </label>
+                  <Input
+                    className="text-xs h-8 font-mono uppercase"
+                    value={currentChassis}
+                    placeholder="misal: MHFGB8GS1P..."
+                    onChange={(e) => handleFieldChange("chassisNumber", e.target.value.toUpperCase())}
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] font-medium text-muted-foreground mb-1 block">
+                    No. Mesin
+                  </label>
+                  <Input
+                    className="text-xs h-8 font-mono uppercase"
+                    value={currentEngine}
+                    placeholder="misal: 2ZRD123456"
+                    onChange={(e) => handleFieldChange("engineNumber", e.target.value.toUpperCase())}
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] font-medium text-muted-foreground mb-1 block">
+                    Warna Kendaraan
+                  </label>
+                  <Input
+                    className="text-xs h-8"
+                    value={currentColor}
+                    placeholder="misal: Hitam Metalik"
+                    onChange={(e) => handleFieldChange("color", e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between pt-1 border-t border-border/50">
+                <span className="text-xs font-medium text-muted-foreground">
+                  Nilai Pertanggungan (TSI)
+                </span>
+                <div className="w-56 shrink-0">
                   <NumberInput
                     preset="money"
-                    aria-label={`${amountPlaceholder} ${item.description || "baris"}`}
+                    aria-label={`${amountPlaceholder} ${item.description || "kendaraan"}`}
                     value={item.amount || null}
                     placeholder={amountPlaceholder}
                     onValueChange={(v) => update(item.id, { amount: v ?? 0 })}
                   />
                 </div>
-                {items.length === 1 ? (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    disabled
-                    aria-label="Baris tunggal"
-                    className="text-muted-foreground opacity-30"
-                  >
-                    <Trash2 className="size-4" />
-                  </Button>
-                ) : null}
               </div>
             </div>
           )

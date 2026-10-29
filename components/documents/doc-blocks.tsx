@@ -2,6 +2,7 @@ import { sumItems, totalPremium, totalSumInsured } from "@/lib/calc"
 import { sanitizeHtml } from "@/lib/sanitize"
 import {
   constructionClassLabel,
+  parseVehicleDescription,
   resolveSlipClauses,
   type PlacingSlip,
 } from "@/lib/data"
@@ -157,6 +158,63 @@ export function InterestBlock({ slip }: { slip: PlacingSlip }) {
       ) : (
         <ul className="flex flex-col gap-2 text-[13px]">
           {slip.interestItems.map((i) => {
+            const isVehicle = slip.cob === "Motor Vehicle" || Boolean(i.vehicleBrandId || i.vehicleBrandName)
+            if (isVehicle) {
+              const parsed = !i.licensePlate && !i.chassisNumber && i.description
+                ? parseVehicleDescription(i.description)
+                : {}
+              const brand = i.vehicleBrandName || ""
+              const type = i.vehicleTypeName || ""
+              const model = i.vehicleModel ?? parsed.vehicleModel ?? ""
+              const year = i.year ?? parsed.year ?? ""
+              const plate = i.licensePlate ?? parsed.licensePlate ?? ""
+              const chassis = i.chassisNumber ?? parsed.chassisNumber ?? ""
+              const engine = i.engineNumber ?? parsed.engineNumber ?? ""
+              const color = i.color ?? parsed.color ?? ""
+
+              const titleParts = [brand, type, model].filter(Boolean).join(" ")
+              const fullTitle = titleParts || i.description || "Kendaraan Bermotor"
+
+              return (
+                <li
+                  key={i.id}
+                  className="flex justify-between items-start gap-6 border-b border-dashed py-1.5"
+                >
+                  <div className="flex flex-col gap-0.5">
+                    <div className="font-semibold text-foreground">
+                      {fullTitle}
+                      {year ? ` (${year})` : ""}
+                    </div>
+                    <div className="text-xs text-muted-foreground flex flex-wrap gap-x-3 gap-y-0.5">
+                      {plate ? (
+                        <span>
+                          Plat: <strong className="font-medium text-foreground">{plate}</strong>
+                        </span>
+                      ) : null}
+                      {chassis ? (
+                        <span>
+                          No. Rangka: <span className="font-mono text-foreground">{chassis}</span>
+                        </span>
+                      ) : null}
+                      {engine ? (
+                        <span>
+                          No. Mesin: <span className="font-mono text-foreground">{engine}</span>
+                        </span>
+                      ) : null}
+                      {color ? (
+                        <span>
+                          Warna: <span className="text-foreground">{color}</span>
+                        </span>
+                      ) : null}
+                    </div>
+                  </div>
+                  <span className="tabular whitespace-nowrap font-medium text-foreground">
+                    {money(i.amount, slip.currency)}
+                  </span>
+                </li>
+              )
+            }
+
             const vehicleLabel = [i.vehicleBrandName, i.vehicleTypeName]
               .filter(Boolean)
               .join(" ")

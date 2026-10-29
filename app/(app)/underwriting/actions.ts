@@ -38,8 +38,16 @@ const lineItemSchema = z.object({
   id: z.string(),
   description: z.string(),
   amount: z.coerce.number().optional(),
-  vehicleBrandId: z.uuid("Merek kendaraan tidak valid").nullish(),
-  vehicleTypeId: z.uuid("Tipe kendaraan tidak valid").nullish(),
+  vehicleBrandId: z.string().nullish(),
+  vehicleTypeId: z.string().nullish(),
+  vehicleBrandName: z.string().nullish(),
+  vehicleTypeName: z.string().nullish(),
+  licensePlate: z.string().nullish(),
+  chassisNumber: z.string().nullish(),
+  engineNumber: z.string().nullish(),
+  year: z.union([z.number(), z.string()]).nullish(),
+  color: z.string().nullish(),
+  vehicleModel: z.string().nullish(),
 })
 
 const rateLineSchema = z.object({

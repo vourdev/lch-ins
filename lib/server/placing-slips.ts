@@ -19,6 +19,10 @@ import { normalizeCob } from "@/lib/format"
 import { prisma } from "@/lib/prisma"
 import { getSppaById } from "@/lib/server/sppa"
 import { checkVehiclePair } from "@/lib/server/vehicles"
+import {
+  buildVehicleDescription,
+  parseVehicleDescription,
+} from "@/lib/data/ojk-motor"
 import { nextDocumentNumber } from "@/server/services/number-generator"
 import { recordAudit } from "@/server/services/audit"
 
@@ -330,6 +334,7 @@ function toPlacingSlipRecord(raw: PrismaPlacingSlipWithRelations): PlacingSlipRe
 
   for (const it of raw.items) {
     if (it.kind === "Interest") {
+      const parsed = parseVehicleDescription(it.description)
       interestItems.push({
         id: it.id,
         description: it.description,
@@ -338,6 +343,12 @@ function toPlacingSlipRecord(raw: PrismaPlacingSlipWithRelations): PlacingSlipRe
         vehicleTypeId: it.vehicleTypeId,
         vehicleBrandName: it.vehicleBrand?.name ?? null,
         vehicleTypeName: it.vehicleType?.name ?? null,
+        licensePlate: parsed.licensePlate ?? null,
+        chassisNumber: parsed.chassisNumber ?? null,
+        engineNumber: parsed.engineNumber ?? null,
+        year: parsed.year ?? null,
+        color: parsed.color ?? null,
+        vehicleModel: parsed.vehicleModel ?? null,
       })
     } else if (it.kind === "SumInsuredSection1") {
       sumInsuredSection1.push({
@@ -766,11 +777,22 @@ export async function createPlacingSlip(
     if (input.interestItems) {
       const motor = normalizeCob(resolvedCob.name as CobType) === "Motor Vehicle"
       for (const it of input.interestItems) {
-        if (it.description.trim() || (motor && it.vehicleBrandId)) {
+        const hasMotorData =
+          motor &&
+          Boolean(
+            it.vehicleBrandId ||
+            it.licensePlate ||
+            it.chassisNumber ||
+            it.vehicleModel
+          )
+        if (it.description?.trim() || hasMotorData) {
+          const finalDesc = motor
+            ? buildVehicleDescription(it) || it.description?.trim() || "Kendaraan Bermotor"
+            : it.description.trim()
           itemsToCreate.push({
             slipId: slip.id,
             kind: "Interest",
-            description: it.description.trim(),
+            description: finalDesc,
             amount: new Prisma.Decimal(it.amount || 0),
             sortOrder: sortIdx++,
             ...(motor ? await checkVehiclePair(tx, it.vehicleBrandId, it.vehicleTypeId) : {}),
@@ -1126,11 +1148,22 @@ export async function updatePlacingSlip(
     if (input.interestItems) {
       const motor = normalizeCob(resolvedCob.name as CobType) === "Motor Vehicle"
       for (const it of input.interestItems) {
-        if (it.description.trim() || (motor && it.vehicleBrandId)) {
+        const hasMotorData =
+          motor &&
+          Boolean(
+            it.vehicleBrandId ||
+            it.licensePlate ||
+            it.chassisNumber ||
+            it.vehicleModel
+          )
+        if (it.description?.trim() || hasMotorData) {
+          const finalDesc = motor
+            ? buildVehicleDescription(it) || it.description?.trim() || "Kendaraan Bermotor"
+            : it.description.trim()
           itemsToCreate.push({
             slipId: id,
             kind: "Interest",
-            description: it.description.trim(),
+            description: finalDesc,
             amount: new Prisma.Decimal(it.amount || 0),
             sortOrder: sortIdx++,
             ...(motor ? await checkVehiclePair(tx, it.vehicleBrandId, it.vehicleTypeId) : {}),

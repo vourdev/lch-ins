@@ -126,6 +126,13 @@ export interface LineItem {
   vehicleTypeId?: string | null
   vehicleBrandName?: string | null
   vehicleTypeName?: string | null
+  /** Rincian terstruktur kendaraan bermotor (SE OJK KBM) */
+  licensePlate?: string | null
+  chassisNumber?: string | null
+  engineNumber?: string | null
+  year?: number | string | null
+  color?: string | null
+  vehicleModel?: string | null
 }
 
 export interface RateLine {
