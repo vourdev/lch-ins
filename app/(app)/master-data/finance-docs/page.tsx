@@ -6,32 +6,28 @@ import {
   listBankAccounts,
   listCurrencies,
   listLookupValues,
-  listWordingForms,
 } from "@/lib/server/master-data"
 import { requireAccess } from "@/lib/server/session"
 
 export const metadata: Metadata = {
-  title: "Keuangan & Wording — LCH Insurance Brokers",
+  title: "Rekening & Mata Uang — LCH Insurance Brokers",
 }
 
 export default async function MasterDataFinanceDocsPage() {
   await requireAccess("/master-data")
 
-  const [initialBankAccounts, initialCurrencies, initialWordingForms, banks] =
-    await Promise.all([
-      listBankAccounts(),
-      listCurrencies(),
-      listWordingForms(),
-      listLookupValues("bank"),
-    ])
+  const [initialBankAccounts, initialCurrencies, banks] = await Promise.all([
+    listBankAccounts(),
+    listCurrencies(),
+    listLookupValues("bank"),
+  ])
 
   return (
     <PageShell>
-      <PageHeader title="Keuangan & Wording" />
+      <PageHeader title="Rekening & Mata Uang" />
       <FinanceDocsTab
         initialBankAccounts={initialBankAccounts}
         initialCurrencies={initialCurrencies}
-        initialWordingForms={initialWordingForms}
         banks={banks}
       />
     </PageShell>

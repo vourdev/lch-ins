@@ -1,16 +1,14 @@
 "use client"
 
 import * as React from "react"
-import { FileText, Landmark, Plus, ShieldAlert } from "lucide-react"
+import { Landmark, Plus, ShieldAlert } from "lucide-react"
 import { toast } from "sonner"
 
 import {
   createBankAccountAction,
   createCurrencyAction,
-  createWordingFormAction,
   toggleBankAccountStatusAction,
   toggleCurrencyStatusAction,
-  toggleWordingFormStatusAction,
   updateBankAccountAction,
 } from "@/app/(app)/master-data/actions"
 import { StatusBadge, ToneBadge } from "@/components/shared/status-badge"
@@ -46,28 +44,25 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import type { Currency, LookupValue, WordingForm } from "@/lib/generated/prisma/client"
+import type { Currency, LookupValue } from "@/lib/generated/prisma/client"
 import type { BankAccountRecord } from "@/lib/server/master-data"
 
 export interface FinanceDocsTabProps {
   initialBankAccounts: BankAccountRecord[]
   initialCurrencies: Currency[]
-  initialWordingForms: WordingForm[]
   banks: LookupValue[]
 }
 
 export function FinanceDocsTab({
   initialBankAccounts,
   initialCurrencies,
-  initialWordingForms,
   banks,
 }: FinanceDocsTabProps) {
   const permission = usePermission()
   const canManage = permission.canManage("/master-data")
-  const [subTab, setSubTab] = React.useState<"banks" | "currencies" | "wordings">("banks")
+  const [subTab, setSubTab] = React.useState<"banks" | "currencies">("banks")
   const [bankAccounts, setBankAccounts] = React.useState<BankAccountRecord[]>(initialBankAccounts)
   const [currencies, setCurrencies] = React.useState<Currency[]>(initialCurrencies)
-  const [wordingForms, setWordingForms] = React.useState<WordingForm[]>(initialWordingForms)
   const [isPending, startTransition] = React.useTransition()
 
   // Modal Bank State
@@ -79,10 +74,6 @@ export function FinanceDocsTab({
   const [currencyCode, setCurrencyCode] = React.useState("IDR")
   const [isPremiumTrust, setIsPremiumTrust] = React.useState(false)
   const [bankIsActive, setBankIsActive] = React.useState(true)
-
-  // Modal Wording State
-  const [wordingDialogOpen, setWordingDialogOpen] = React.useState(false)
-  const [wordingName, setWordingName] = React.useState("")
 
   // Modal Mata Uang State
   const [currencyDialogOpen, setCurrencyDialogOpen] = React.useState(false)
@@ -99,12 +90,6 @@ export function FinanceDocsTab({
   if (prevBankAccounts !== initialBankAccounts) {
     setPrevBankAccounts(initialBankAccounts)
     setBankAccounts(initialBankAccounts)
-  }
-
-  const [prevWordingForms, setPrevWordingForms] = React.useState(initialWordingForms)
-  if (prevWordingForms !== initialWordingForms) {
-    setPrevWordingForms(initialWordingForms)
-    setWordingForms(initialWordingForms)
   }
 
   function openAddBank() {
@@ -194,25 +179,6 @@ export function FinanceDocsTab({
     })
   }
 
-  function handleSaveWording() {
-    if (!wordingName.trim()) {
-      toast.error("Nama wording form wajib diisi")
-      return
-    }
-
-    startTransition(async () => {
-      const res = await createWordingFormAction({ name: wordingName })
-      if (!res.ok || !res.data) {
-        toast.error(res.error)
-        return
-      }
-      toast.success("Wording form baru berhasil ditambahkan")
-      setWordingForms((prev) => [res.data as WordingForm, ...prev])
-      setWordingName("")
-      setWordingDialogOpen(false)
-    })
-  }
-
   function handleSaveCurrency() {
     if (!newCurrencyCode.trim() || !newCurrencyName.trim()) {
       toast.error("Kode dan nama mata uang wajib diisi")
@@ -252,26 +218,13 @@ export function FinanceDocsTab({
     })
   }
 
-  function handleToggleWording(id: string, current: boolean) {
-    const next = !current
-    startTransition(async () => {
-      const res = await toggleWordingFormStatusAction(id, next)
-      if (!res.ok) {
-        toast.error(res.error)
-        return
-      }
-      setWordingForms((prev) => prev.map((w) => (w.id === id ? { ...w, isActive: next } : w)))
-      toast.success(next ? "Wording form diaktifkan" : "Wording form dinonaktifkan")
-    })
-  }
-
   return (
     <div className="flex flex-col gap-4">
       {/* Sub Tabs */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Tabs
           value={subTab}
-          onValueChange={(val) => setSubTab(val as "banks" | "currencies" | "wordings")}
+          onValueChange={(val) => setSubTab(val as "banks" | "currencies")}
         >
           <TabsList className="h-9">
             <TabsTrigger value="banks" className="gap-1.5 text-xs">
@@ -280,10 +233,6 @@ export function FinanceDocsTab({
             </TabsTrigger>
             <TabsTrigger value="currencies" className="text-xs">
               Mata Uang ({currencies.length})
-            </TabsTrigger>
-            <TabsTrigger value="wordings" className="gap-1.5 text-xs">
-              <FileText className="size-3.5" />
-              Wording Form Polis ({wordingForms.length})
             </TabsTrigger>
           </TabsList>
         </Tabs>
@@ -307,20 +256,6 @@ export function FinanceDocsTab({
           >
             <Plus className="size-4" />
             Tambah Mata Uang
-          </Button>
-        )}
-
-        {subTab === "wordings" && canManage && (
-          <Button
-            size="sm"
-            onClick={() => {
-              setWordingName("")
-              setWordingDialogOpen(true)
-            }}
-            className="h-9 gap-1.5 text-xs"
-          >
-            <Plus className="size-4" />
-            Tambah Wording Form
           </Button>
         )}
       </div>
@@ -427,48 +362,6 @@ export function FinanceDocsTab({
                   )}
                 </TableRow>
               ))}
-            </TableBody>
-          </Table>
-        </Card>
-      )}
-
-      {/* 3. Wording Form */}
-      {subTab === "wordings" && (
-        <Card className="gap-0 overflow-hidden py-0">
-          <Table className="min-w-200">
-            <TableHeader>
-              <TableRow className="hover:bg-transparent">
-                <TableHead>Nama Wording Form Baku</TableHead>
-                <TableHead className="w-28">Status</TableHead>
-                {canManage && <TableHead className="w-24 text-right pr-4">Aksi</TableHead>}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {wordingForms.length === 0 ? (
-                <TableEmpty colSpan={canManage ? 3 : 2} message="Belum ada data wording form polis baku." />
-              ) : (
-                wordingForms.map((w) => (
-                  <TableRow key={w.id}>
-                    <TableCell className="font-medium text-foreground">{w.name}</TableCell>
-                    <TableCell>
-                      <StatusBadge status={w.isActive ? "Active" : "Inactive"} />
-                    </TableCell>
-                    {canManage && (
-                      <TableCell className="text-right pr-4">
-                        <div className="flex items-center justify-end">
-                          <Switch
-                            checked={w.isActive}
-                            onCheckedChange={() => handleToggleWording(w.id, w.isActive)}
-                            disabled={isPending}
-                            className="scale-75"
-                            title={w.isActive ? "Nonaktifkan wording" : "Aktifkan wording"}
-                          />
-                        </div>
-                      </TableCell>
-                    )}
-                  </TableRow>
-                ))
-              )}
             </TableBody>
           </Table>
         </Card>
@@ -598,7 +491,6 @@ export function FinanceDocsTab({
         </DialogContent>
       </Dialog>
 
-      {/* Dialog Wording Form */}
       {/* Dialog Mata Uang */}
       <Dialog open={currencyDialogOpen} onOpenChange={setCurrencyDialogOpen}>
         <DialogContent className="sm:max-w-md">
@@ -656,54 +548,6 @@ export function FinanceDocsTab({
               className="text-xs"
             >
               Simpan Mata Uang
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={wordingDialogOpen} onOpenChange={setWordingDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Tambah Wording Form Polis Baku</DialogTitle>
-            <DialogDescription className="text-xs">
-              Masukkan nama format baku polis asuransi (contoh: Polis Standar Asuransi Kendaraan
-              Bermotor Indonesia / PSAKBI).
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="flex flex-col gap-3 py-2 text-xs">
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="wording-name" className="text-xs font-medium">
-                Nama Wording Form <span className="text-destructive">*</span>
-              </Label>
-              <Input
-                id="wording-name"
-                placeholder="Contoh: PSAKI (Polis Standar Asuransi Kebakaran Indonesia)"
-                value={wordingName}
-                onChange={(e) => setWordingName(e.target.value)}
-                className="h-8.5 text-xs"
-              />
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setWordingDialogOpen(false)}
-              className="text-xs"
-            >
-              Batal
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              onClick={handleSaveWording}
-              disabled={isPending}
-              className="text-xs"
-            >
-              Simpan Wording Form
             </Button>
           </DialogFooter>
         </DialogContent>

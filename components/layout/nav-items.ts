@@ -103,15 +103,18 @@ export const NAV_GROUPS: NavGroup[] = [
         title: "Master Data",
         href: "/master-data",
         icon: Database,
-        // Tujuh bagian ini dulunya tab di dalam halaman. Dipindah ke submenu
+        // Bagian-bagian ini dulunya tab di dalam halaman. Dipindah ke submenu
         // supaya masing-masing punya alamat sendiri: bisa ditautkan,
-        // di-bookmark, dan dibuka tanpa memuat data enam bagian lain.
+        // di-bookmark, dan dibuka tanpa memuat data bagian lain. Wording Form
+        // dipisah dari Rekening & Mata Uang karena tidak berhubungan; letaknya
+        // dekat COB karena sama-sama acuan slip.
         items: [
           { title: "COB & Cover Type", href: "/master-data/cob" },
+          { title: "Wording Form", href: "/master-data/wording-forms" },
           { title: "Tarif Baku OJK", href: "/master-data/tariff-ojk" },
           { title: "Klasifikasi OJK", href: "/master-data/ojk-classes" },
           { title: "Asuransi & Adjuster", href: "/master-data/partners" },
-          { title: "Keuangan & Wording", href: "/master-data/finance-docs" },
+          { title: "Rekening & Mata Uang", href: "/master-data/finance-docs" },
           { title: "Kendaraan", href: "/master-data/vehicles" },
           { title: "Nilai Pilihan Dropdown", href: "/master-data/lookups" },
         ],
