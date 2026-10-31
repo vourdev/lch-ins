@@ -87,8 +87,23 @@ export function SppaTable({
     setPageSize,
   } = usePagination(rows, compact ? 5 : 10)
 
+  // Slip yang dibuat dari SPPA ini. Tautan dari database didahulukan; store
+  // sesi hanya cadangan untuk slip yang baru dibuat dan belum dimuat ulang.
+  // Dulu hanya store yang dibaca, sehingga slip dari database tidak terlihat.
+  function linkedSlipOf(s: Sppa) {
+    const fromDb = (s as Partial<SppaRecord>).linkedSlip
+    if (fromDb) return { id: fromDb.id, slipNo: fromDb.slipNo }
+    const local = slips.find((x) => x.sppaId === s.id)
+    return local ? { id: local.id, slipNo: local.slipNo } : null
+  }
+
+  function slipCountOf(s: Sppa) {
+    const fromDb = (s as Partial<SppaRecord>).slipCount ?? 0
+    return Math.max(fromDb, slips.filter((x) => x.sppaId === s.id).length)
+  }
+
   function actionsFor(s: Sppa): RowAction[] {
-    const slipCount = slips.filter((x) => x.sppaId === s.id).length
+    const slipCount = slipCountOf(s)
     const actions: RowAction[] = [
       {
         label: "Cetak SPPA",
@@ -237,7 +252,7 @@ export function SppaTable({
               <TableEmpty colSpan={7} message="Belum ada SPPA" />
             ) : (
               paginatedRows.map((s) => {
-                const linked = slips.filter((x) => x.sppaId === s.id)
+                const linked = linkedSlipOf(s)
                 return (
                   <TableRow key={s.id}>
                     <TableCell className={ACTION_COL_CLASS}>
@@ -265,12 +280,12 @@ export function SppaTable({
                       </span>
                     </TableCell>
                     <TableCell>
-                      {linked.length ? (
+                      {linked ? (
                         <Link
-                          href={`/underwriting/edit/${linked[0].id}`}
+                          href={`/underwriting/edit/${linked.id}`}
                           className="text-primary underline-offset-2 hover:underline"
                         >
-                          {linked[0].slipNo ?? "Draft slip"}
+                          {linked.slipNo ?? "Draft slip"}
                         </Link>
                       ) : (
                         <span className="text-muted-foreground">Belum ada</span>

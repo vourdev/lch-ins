@@ -28,10 +28,18 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { kycMissing, policyStatus, type Client, type VehicleBrandOption } from "@/lib/data"
+import {
+  kycMissing,
+  policyStatus,
+  type Claim,
+  type Client,
+  type PlacingSlip,
+  type Policy,
+  type VehicleBrandOption,
+} from "@/lib/data"
 import { dateShort, money } from "@/lib/format"
 import type { SppaRecord } from "@/lib/server/sppa"
-import { store, useCollection, useRecord } from "@/lib/store"
+import { store } from "@/lib/store"
 
 function Item({ label, value }: { label: string; value?: React.ReactNode }) {
   return (
@@ -43,16 +51,21 @@ function Item({ label, value }: { label: string; value?: React.ReactNode }) {
 }
 
 interface ClientDetailProps {
-  id: string
   initialClient?: Client | null
   initialSppa?: SppaRecord[]
+  /** Slip, polis, dan klaim milik klien ini, sudah disaring di server dari database. */
+  slips: PlacingSlip[]
+  policies: Policy[]
+  claims: Claim[]
   vehicleOptions?: VehicleBrandOption[]
 }
 
 export function ClientDetail({
-  id,
   initialClient,
   initialSppa,
+  slips: clientSlips,
+  policies: clientPolicies,
+  claims: clientClaims,
   vehicleOptions,
 }: ClientDetailProps) {
   const today = useToday()
@@ -60,17 +73,21 @@ export function ClientDetail({
   const canManageMarketing = permission.canManage("/marketing")
   const canManageUnderwriting = permission.canManage("/underwriting")
 
-  React.useEffect(() => {
-    if (initialClient) {
-      store.upsert("clients", initialClient)
-    }
-  }, [initialClient])
+  // Data klien dari database. Dulu dicari di store sesi memakai id di URL,
+  // sehingga tautan lama (c-005) menampilkan data contoh beserta slip, polis,
+  // dan klaim contohnya. Setelah KYC diedit, isinya diganti hasil simpanan.
+  const [client, setClient] = React.useState(initialClient ?? null)
+  const [prevInitialClient, setPrevInitialClient] = React.useState(initialClient)
+  if (prevInitialClient !== initialClient) {
+    setPrevInitialClient(initialClient)
+    setClient(initialClient ?? null)
+  }
 
-  const storedClient = useRecord("clients", id)
-  const client = storedClient ?? initialClient ?? null
-  const slips = useCollection("slips")
-  const policies = useCollection("policies")
-  const claims = useCollection("claims")
+  // Komponen lain di sesi ini (misalnya form slip baru) masih membaca store.
+  React.useEffect(() => {
+    if (client) store.upsert("clients", client)
+  }, [client])
+
   const [editKey, setEditKey] = React.useState<number | null>(null)
 
   if (!client) {
@@ -90,12 +107,6 @@ export function ClientDetail({
 
   const missing = kycMissing(client)
   const corporate = client.clientType === "Korporasi"
-  const clientSlips = slips.filter((s) => s.clientId === client.id)
-  const clientPolicies = policies.filter((p) => p.clientId === client.id)
-  const policyIds = new Set(clientPolicies.map((p) => p.id))
-  const clientClaims = claims.filter(
-    (c) => c.policyId && policyIds.has(c.policyId)
-  )
 
   return (
     <div className="flex flex-col gap-6">
@@ -425,6 +436,7 @@ export function ClientDetail({
             if (!open) setEditKey(null)
           }}
           client={client}
+          onSaved={(saved) => setClient(saved)}
         />
       ) : null}
     </div>

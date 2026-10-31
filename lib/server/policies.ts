@@ -306,9 +306,13 @@ async function readPolicy(tx: Tx, id: string) {
   )
 }
 
-export async function listPolicies(): Promise<PolicyRecord[]> {
+/** Semua polis, atau hanya milik satu klien bila `clientId` (UUID) diisi. */
+export async function listPolicies(
+  params: { clientId?: string } = {}
+): Promise<PolicyRecord[]> {
   await seedInitialPoliciesIfEmpty()
   const rows = await prisma.policy.findMany({
+    where: params.clientId ? { clientId: params.clientId } : undefined,
     include: policyInclude,
     orderBy: { expiryDate: "desc" },
   })

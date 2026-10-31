@@ -207,8 +207,12 @@ function toClaimRecord(record: PrismaClaimWithRelations): ClaimRecord {
   }
 }
 
-export async function listClaims(): Promise<ClaimRecord[]> {
+/** Semua klaim, atau hanya klaim atas polis satu klien bila `clientId` (UUID) diisi. */
+export async function listClaims(
+  params: { clientId?: string } = {}
+): Promise<ClaimRecord[]> {
   const records = await prisma.claim.findMany({
+    where: params.clientId ? { policy: { clientId: params.clientId } } : undefined,
     include: claimIncludeRelations,
     orderBy: { lossDate: "desc" },
   })
