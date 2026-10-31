@@ -263,7 +263,15 @@ export function ClientDetail({
                       >
                         <ExternalLink />
                       </Button>
-                    ) : null}
+                    ) : (
+                      // Data contoh dan berkas dari masa prototipe tidak punya isi di server.
+                      <span
+                        className="shrink-0 text-xs text-muted-foreground"
+                        title="Isi file belum tersimpan di server. Unggah ulang lewat Edit KYC."
+                      >
+                        Belum diunggah
+                      </span>
+                    )}
                   </li>
                 ))}
               </ul>

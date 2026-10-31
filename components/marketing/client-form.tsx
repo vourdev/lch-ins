@@ -8,6 +8,7 @@ import * as z from "zod"
 import {
   createClientAction,
   updateClientAction,
+  uploadClientDocumentAction,
 } from "@/app/(app)/marketing/actions"
 import { FormDrawer } from "@/components/shared/form-drawer"
 import { SelectInput, TextField } from "@/components/shared/form-fields"
@@ -32,6 +33,7 @@ import {
   type FormOptions,
 } from "@/lib/form-options"
 import { newId, store } from "@/lib/store"
+import { UPLOAD_ACCEPT, UPLOAD_HINT, uploadProblem } from "@/lib/uploads"
 import {
   email,
   nik,
@@ -169,8 +171,18 @@ export function ClientForm({
     client ? { ...client } : emptyDraft(options)
   )
   const [errors, setErrors] = React.useState<FieldErrors>({})
+  // File yang dipilih tapi belum dikirim, per id baris berkas. Dikirim saat Simpan.
+  const [pendingFiles, setPendingFiles] = React.useState<Record<string, File>>({})
   const set = (patch: Partial<Draft>) => setDraft((d) => ({ ...d, ...patch }))
   const corporate = draft.clientType === "Korporasi"
+
+  function dropPendingFile(id: string) {
+    setPendingFiles((files) => {
+      const next = { ...files }
+      delete next[id]
+      return next
+    })
+  }
 
   function patchAddress(id: string, patch: Partial<ClientAddress>) {
     set({
@@ -197,6 +209,31 @@ export function ClientForm({
     const result = validate(schema, draft)
     setErrors(result.errors)
     if (!result.ok) return false
+
+    // Isi file dikirim dulu, satu per satu. Id hasilnya langsung dicatat di
+    // draft, jadi bila simpan gagal lalu diulang, file yang sudah terkirim
+    // tidak diunggah lagi.
+    const fileIds: Record<string, string> = {}
+    for (const d of draft.documents) {
+      const file = pendingFiles[d.id]
+      if (!file) continue
+      const body = new FormData()
+      body.append("file", file)
+      const res = await uploadClientDocumentAction(body)
+      if (!res.ok || !res.data) {
+        toast.error(`Gagal mengunggah ${file.name}`, { description: res.error })
+        return false
+      }
+      const fileId = res.data.id
+      fileIds[d.id] = fileId
+      dropPendingFile(d.id)
+      setDraft((dr) => ({
+        ...dr,
+        documents: dr.documents.map((x) =>
+          x.id === d.id ? { ...x, fileId } : x
+        ),
+      }))
+    }
 
     const addresses = draft.addresses.some((a) => a.isPrimary)
       ? draft.addresses
@@ -237,7 +274,7 @@ export function ClientForm({
           id: d.id,
           type: d.type,
           fileName: d.fileName,
-          url: d.url,
+          fileId: fileIds[d.id] ?? d.fileId,
         })),
     }
 
@@ -566,17 +603,26 @@ export function ClientForm({
                 <span className="text-sm font-medium">File</span>
                 <input
                   type="file"
-                  accept="application/pdf,image/*"
+                  accept={UPLOAD_ACCEPT}
                   className="sr-only"
                   onChange={(e) => {
                     const file = e.target.files?.[0]
-                    if (file) {
-                      patchDocument(d.id, {
-                        fileName: file.name,
-                        uploadedAt: todayIso(),
-                        url: URL.createObjectURL(file),
+                    e.target.value = ""
+                    if (!file) return
+                    const problem = uploadProblem(file)
+                    if (problem) {
+                      toast.error(`${file.name} tidak bisa diunggah`, {
+                        description: problem,
                       })
+                      return
                     }
+                    setPendingFiles((files) => ({ ...files, [d.id]: file }))
+                    patchDocument(d.id, {
+                      fileName: file.name,
+                      uploadedAt: todayIso(),
+                      url: undefined,
+                      fileId: undefined,
+                    })
                   }}
                 />
                 <span className="flex h-9 items-center gap-2 truncate rounded-lg bg-input/50 px-3 text-sm">
@@ -592,11 +638,12 @@ export function ClientForm({
                 size="icon"
                 aria-label="Hapus berkas"
                 className="self-end text-muted-foreground hover:text-destructive"
-                onClick={() =>
+                onClick={() => {
+                  dropPendingFile(d.id)
                   set({
                     documents: draft.documents.filter((x) => x.id !== d.id),
                   })
-                }
+                }}
               >
                 <Trash2 />
               </Button>
@@ -628,7 +675,7 @@ export function ClientForm({
             Tambah berkas
           </Button>
           <p className="text-xs text-muted-foreground">
-            PDF atau gambar. Berkas tanpa file tidak ikut disimpan.
+            {UPLOAD_HINT} Berkas tanpa file tidak ikut disimpan.
           </p>
         </div>
 

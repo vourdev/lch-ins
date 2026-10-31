@@ -21,6 +21,7 @@ import {
   type SppaRecord,
 } from "@/lib/server/sppa"
 import { requireManage } from "@/lib/server/session"
+import { saveUploadedFile } from "@/lib/server/stored-files"
 
 export interface ActionResponse<T = unknown> {
   ok: boolean
@@ -63,11 +64,34 @@ const clientInputSchema = z.object({
         id: z.string().optional(),
         type: z.string(),
         fileName: z.string(),
-        url: z.string().optional(),
+        fileId: z.uuid().optional(),
       })
     )
     .optional(),
 })
+
+/**
+ * Unggah isi satu berkas KYC. Form klien memanggilnya saat Simpan, sebelum
+ * data klien dikirim, lalu menautkan id hasilnya ke baris berkas.
+ */
+export async function uploadClientDocumentAction(
+  formData: FormData
+): Promise<ActionResponse<{ id: string }>> {
+  try {
+    const user = await requireManage("/marketing")
+    const file = formData.get("file")
+    if (!(file instanceof File)) {
+      return { ok: false, error: "File tidak ditemukan." }
+    }
+
+    const stored = await saveUploadedFile(file, "client_document", user.id)
+    return { ok: true, data: { id: stored.id } }
+  } catch (err: unknown) {
+    const message =
+      err instanceof Error ? err.message : "Gagal mengunggah berkas."
+    return { ok: false, error: message }
+  }
+}
 
 export async function createClientAction(
   input: ClientInput

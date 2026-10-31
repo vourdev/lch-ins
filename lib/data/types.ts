@@ -51,8 +51,13 @@ export interface ClientDocument {
   type: string
   fileName: string
   uploadedAt: string
-  /** Object URL selama sesi prototipe. Di backend diganti path file di server. */
+  /**
+   * Alamat untuk membuka isi berkas dari server. Kosong untuk data contoh dan
+   * berkas dari masa prototipe yang isinya tidak pernah terunggah.
+   */
   url?: string
+  /** Id isi berkas yang baru diunggah dari form, belum tertaut ke klien. */
+  fileId?: string
 }
 
 /** Data klien mengikuti form KYC LCH (ERD tabel clients). */

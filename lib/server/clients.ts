@@ -15,6 +15,12 @@ import { normalizeCob } from "@/lib/format"
 import type { Prisma } from "@/lib/generated/prisma/client"
 import { prisma } from "@/lib/prisma"
 import { cobLookupKeys } from "@/lib/server/cob"
+import {
+  assertClaimableFile,
+  deleteStoredFiles,
+  storedFilePath,
+  storedFileUrl,
+} from "@/lib/server/stored-files"
 import { recordAudit } from "@/server/services/audit"
 
 export interface ClientRecord extends Client {
@@ -33,7 +39,8 @@ export interface ClientDocumentInput {
   id?: string
   type: string
   fileName: string
-  url?: string
+  /** Id stored_files bila file baru diunggah untuk baris ini. */
+  fileId?: string
 }
 
 export interface ClientInput {
@@ -215,7 +222,7 @@ function mapPrismaClientToRecord(
     type: d.documentType?.name || "Lain-lain",
     fileName: d.fileName,
     uploadedAt: toDateOnly(d.uploadedAt) || "",
-    url: d.filePath || undefined,
+    url: storedFileUrl(d.filePath),
   }))
 
   const cobName: CobType = normalizeCob(c.cob?.name)
@@ -531,6 +538,31 @@ export async function getClientById(
 /**
  * Persist a new client record with associated addresses and documents into PostgreSQL.
  */
+function missingUpload(fileName: string) {
+  return new Error(`Isi berkas ${fileName} belum terunggah. Pilih ulang filenya.`)
+}
+
+/**
+ * file_path untuk berkas KYC yang baru diunggah. Satu isi berkas hanya boleh
+ * dipakai satu baris, karena menghapus baris ikut menghapus isinya.
+ */
+async function claimClientDocumentFile(
+  tx: Prisma.TransactionClient,
+  fileId: string,
+  userId: string
+) {
+  await assertClaimableFile(tx, fileId, "client_document", userId)
+  const filePath = storedFilePath(fileId)
+  const used = await tx.clientDocument.findFirst({
+    where: { filePath },
+    select: { id: true },
+  })
+  if (used) {
+    throw new Error("Berkas ini sudah dipakai dokumen lain. Pilih ulang filenya.")
+  }
+  return filePath
+}
+
 export async function createClient(
   input: ClientInput,
   userId?: string
@@ -627,6 +659,7 @@ export async function createClient(
     if (userId && input.documents && input.documents.length > 0) {
       for (const doc of input.documents) {
         if (!doc.fileName) continue
+        if (!doc.fileId) throw missingUpload(doc.fileName)
         const docTypeId =
           resolveLookupId(cache, "client_document_type", doc.type) ||
           resolveLookupId(cache, "client_document_type", "other")!
@@ -636,7 +669,7 @@ export async function createClient(
             clientId: created.id,
             documentTypeId: docTypeId,
             fileName: doc.fileName,
-            filePath: doc.url || `/uploads/clients/${doc.fileName}`,
+            filePath: await claimClientDocumentFile(tx, doc.fileId, userId),
             uploadedBy: userId,
           },
         })
@@ -766,32 +799,73 @@ export async function updateClient(
       }
     }
 
-    // Synchronize newly added documents if provided
-    if (userId && input.documents && input.documents.length > 0) {
+    // Berkas KYC disamakan dengan isi form: baris yang dihapus ikut dihapus
+    // beserta isinya, file pengganti menggantikan isi lama, dan baris baru
+    // wajib membawa file yang sudah diunggah. Baris baru dari form memakai id
+    // sementara (bukan UUID), jadi baris lama dikenali dari daftar milik klien
+    // ini, bukan dengan query per id.
+    if (userId && input.documents) {
+      const current = await tx.clientDocument.findMany({
+        where: { clientId: existing.dbId },
+        select: { id: true, documentTypeId: true, filePath: true },
+      })
+      const currentById = new Map(current.map((d) => [d.id, d]))
+      const keptIds = new Set<string>()
+      const unusedPaths: string[] = []
+
       for (const doc of input.documents) {
         if (!doc.fileName) continue
         const docTypeId =
           resolveLookupId(cache, "client_document_type", doc.type) ||
           resolveLookupId(cache, "client_document_type", "other")!
-
-        const exists = doc.id
-          ? await tx.clientDocument.findFirst({
-              where: { id: doc.id, clientId: existing.dbId },
-            })
+        const old = doc.id ? currentById.get(doc.id) : undefined
+        const filePath = doc.fileId
+          ? await claimClientDocumentFile(tx, doc.fileId, userId)
           : null
 
-        if (!exists) {
+        if (!old) {
+          if (!filePath) throw missingUpload(doc.fileName)
           await tx.clientDocument.create({
             data: {
               clientId: existing.dbId,
               documentTypeId: docTypeId,
               fileName: doc.fileName,
-              filePath: doc.url || `/uploads/clients/${doc.fileName}`,
+              filePath,
               uploadedBy: userId,
             },
           })
+          continue
+        }
+
+        keptIds.add(old.id)
+        if (filePath) {
+          await tx.clientDocument.update({
+            where: { id: old.id },
+            data: {
+              documentTypeId: docTypeId,
+              fileName: doc.fileName,
+              filePath,
+              uploadedBy: userId,
+              uploadedAt: new Date(),
+            },
+          })
+          unusedPaths.push(old.filePath)
+        } else if (old.documentTypeId !== docTypeId) {
+          await tx.clientDocument.update({
+            where: { id: old.id },
+            data: { documentTypeId: docTypeId },
+          })
         }
       }
+
+      const removed = current.filter((d) => !keptIds.has(d.id))
+      if (removed.length > 0) {
+        await tx.clientDocument.deleteMany({
+          where: { id: { in: removed.map((d) => d.id) } },
+        })
+        unusedPaths.push(...removed.map((d) => d.filePath))
+      }
+      await deleteStoredFiles(tx, unusedPaths)
     }
 
     if (userId) {
@@ -889,7 +963,12 @@ export async function deleteClient(id: string, userId?: string): Promise<void> {
 
   await prisma.$transaction(async (tx) => {
     await tx.clientAddress.deleteMany({ where: { clientId: existing.dbId } })
+    const documents = await tx.clientDocument.findMany({
+      where: { clientId: existing.dbId },
+      select: { filePath: true },
+    })
     await tx.clientDocument.deleteMany({ where: { clientId: existing.dbId } })
+    await deleteStoredFiles(tx, documents.map((d) => d.filePath))
     await tx.client.delete({ where: { id: existing.dbId } })
 
     if (userId) {

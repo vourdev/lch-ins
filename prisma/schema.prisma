@@ -131,6 +131,7 @@ model User {
   accounts          Account[]
   auditLogs         AuditLog[]
   clientDocuments   ClientDocument[]
+  storedFiles       StoredFile[]
   sppa              Sppa[]
   slipsCreated      PlacingSlip[]    @relation("slipCreatedBy")
   slipsReleased     PlacingSlip[]    @relation("slipReleasedBy")
@@ -888,6 +889,8 @@ model ClientDocument {
   /// lookup client_document_type
   documentTypeId String   @map("document_type_id") @db.Uuid
   fileName       String   @map("file_name")
+  /// `stored_files/<id>` bila isinya tersimpan di tabel stored_files. Nilai
+  /// lain berasal dari data contoh atau prototipe dan tidak punya isi.
   filePath       String   @map("file_path")
   uploadedBy     String   @map("uploaded_by") @db.Uuid
   uploadedAt     DateTime @default(now()) @map("uploaded_at") @db.Timestamptz(6)
@@ -901,6 +904,26 @@ model ClientDocument {
 
   @@index([clientId])
   @@map("client_documents")
+}
+
+/// Isi berkas yang diunggah pengguna. Disimpan di database supaya ikut backup
+/// harian dan tetap ada di hosting yang disknya tidak permanen (Vercel).
+/// Baris pemakainya menunjuk ke sini lewat file_path `stored_files/<id>`.
+model StoredFile {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  fileName    String   @map("file_name")
+  /// Dibaca dari isi file saat diunggah, bukan dari keterangan browser.
+  contentType String   @map("content_type")
+  sizeBytes   Int      @map("size_bytes")
+  data        Bytes
+  /// Pemakaian berkas, menentukan hak akses saat dibuka: client_document.
+  purpose     String
+  uploadedBy  String   @map("uploaded_by") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  uploader User @relation(fields: [uploadedBy], references: [id])
+
+  @@map("stored_files")
 }
 
 /// Kode nasabah di sistem masing-masing asuransi (ERD client_insurer_codes).
