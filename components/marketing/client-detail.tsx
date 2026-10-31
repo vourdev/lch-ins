@@ -282,14 +282,12 @@ export function ClientDetail({
         </div>
       </div>
 
-      <SectionCard title="SPPA" contentClassName="pt-4">
-        <SppaTable
-          clientId={client.id}
-          initialSppa={initialSppa}
-          compact
-          vehicleOptions={vehicleOptions}
-        />
-      </SectionCard>
+      <SppaTable
+        clientId={client.id}
+        initialSppa={initialSppa}
+        compact
+        vehicleOptions={vehicleOptions}
+      />
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
         <SectionCard

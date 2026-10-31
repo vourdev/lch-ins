@@ -4,10 +4,10 @@ import Link from "next/link"
 import { Check, ExternalLink, Pencil } from "lucide-react"
 
 import { SearchSelect } from "@/components/shared/form-fields"
-import { Button } from "@/components/ui/button"
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { Toggle } from "@/components/ui/toggle"
 import { correspondenceAddress as defaultAddress } from "@/lib/data"
 import { maskMiddle } from "@/lib/format"
 import { useCollection } from "@/lib/store"
@@ -118,18 +118,18 @@ export function InsuredPicker({
             {addresses.map((a) => {
               const active = activeAddress?.id === a.id
               return (
-                <Button
+                <Toggle
                   key={a.id}
-                  type="button"
-                  variant={active ? "secondary" : "outline"}
                   size="sm"
-                  aria-pressed={active}
+                  pressed={active}
                   title={a.value}
-                  onClick={() => onChange({ correspondenceAddress: a.value })}
+                  onPressedChange={() =>
+                    onChange({ correspondenceAddress: a.value })
+                  }
                 >
                   {active ? <Check data-icon="inline-start" /> : null}
                   {a.label}
-                </Button>
+                </Toggle>
               )
             })}
             {correspondenceAddress && !activeAddress ? (

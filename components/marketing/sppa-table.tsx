@@ -15,6 +15,7 @@ import {
   RowActions,
   type RowAction,
 } from "@/components/shared/row-actions"
+import { SectionCard } from "@/components/shared/section-card"
 import { StatusBadge } from "@/components/shared/status-badge"
 import { TableEmpty } from "@/components/shared/table-empty"
 import { TablePagination, usePagination } from "@/components/shared/table-pagination"
@@ -40,6 +41,7 @@ export interface SppaTableProps {
   initialSppa?: SppaRecord[]
   /** Batasi ke satu klien (dipakai di halaman detail klien). */
   clientId?: string
+  /** Mode detail klien: card sendiri tanpa pencarian dan export. */
   compact?: boolean
   vehicleOptions?: VehicleBrandOption[]
 }
@@ -204,33 +206,33 @@ export function SppaTable({
     ],
   }
 
-  return (
+  const createButton = canManageMarketing ? (
+    <Button
+      size="sm"
+      onClick={() =>
+        setForm((prev) => ({ key: (prev?.key ?? 0) + 1, sppa: null }))
+      }
+    >
+      <Plus data-icon="inline-start" />
+      Buat SPPA
+    </Button>
+  ) : null
+
+  const content = (
     <div className="flex flex-col gap-4">
-      <div className="no-print flex flex-wrap items-center gap-2">
-        {!compact ? (
+      {!compact ? (
+        <div className="no-print flex flex-wrap items-center gap-2">
           <SearchInput
             value={query}
             onValueChange={setQuery}
             placeholder="Cari tertanggung, COB, lokasi…"
           />
-        ) : null}
-        <div className="ml-auto flex flex-wrap items-center gap-2">
-          {!compact ? (
+          <div className="ml-auto flex flex-wrap items-center gap-2">
             <ExportButtons spec={exportSpec} printHref={printHref} />
-          ) : null}
-          {canManageMarketing ? (
-            <Button
-              size="sm"
-              onClick={() =>
-                setForm((prev) => ({ key: (prev?.key ?? 0) + 1, sppa: null }))
-              }
-            >
-              <Plus data-icon="inline-start" />
-              Buat SPPA
-            </Button>
-          ) : null}
+            {createButton}
+          </div>
         </div>
-      </div>
+      ) : null}
 
       <Card className="gap-0 overflow-hidden py-0">
         <Table className="min-w-200">
@@ -326,4 +328,15 @@ export function SppaTable({
       ) : null}
     </div>
   )
+
+  // Di detail klien tabel tampil sebagai card sendiri, dengan tombol Buat SPPA
+  // di header sejajar judul, bukan di atas tabel.
+  if (compact) {
+    return (
+      <SectionCard title="SPPA" action={createButton} contentClassName="pt-4">
+        {content}
+      </SectionCard>
+    )
+  }
+  return content
 }

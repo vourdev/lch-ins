@@ -417,8 +417,10 @@ function toPlacingSlipRecord(raw: PrismaPlacingSlipWithRelations): PlacingSlipRe
   // Clauses & Overrides
   const clauseIds: string[] = []
   const clauseOverrides: Record<string, ClauseOverride> = {}
+  const clauseCopies: Record<string, ClauseOverride> = {}
   for (const cl of raw.clauses) {
     clauseIds.push(cl.clauseId)
+    clauseCopies[cl.clauseId] = { title: cl.title, wording: cl.wordingHtml }
     if (cl.isEdited) {
       clauseOverrides[cl.clauseId] = {
         title: cl.title,
@@ -485,6 +487,7 @@ function toPlacingSlipRecord(raw: PrismaPlacingSlipWithRelations): PlacingSlipRe
     deductiblesSection2,
     clauseIds,
     clauseOverrides: Object.keys(clauseOverrides).length > 0 ? clauseOverrides : undefined,
+    clauseCopies,
     wordingForms,
     rateLines,
     tplLines,

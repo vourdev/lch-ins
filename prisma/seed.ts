@@ -158,9 +158,9 @@ const LOOKUPS: {
     type: "construction_class",
     system: true,
     values: [
-      ["K1", "Kelas 1"],
-      ["K2", "Kelas 2"],
-      ["K3", "Kelas 3"],
+      ["K1", "Class I"],
+      ["K2", "Class II"],
+      ["K3", "Class III"],
     ],
   },
   {

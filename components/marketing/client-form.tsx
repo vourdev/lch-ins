@@ -14,7 +14,13 @@ import { FormDrawer } from "@/components/shared/form-drawer"
 import { SelectInput, TextField } from "@/components/shared/form-fields"
 import { useFormOptions } from "@/components/shared/form-options-provider"
 import { Button } from "@/components/ui/button"
-import { FieldGroup, FieldSeparator } from "@/components/ui/field"
+import {
+  Field,
+  FieldGroup,
+  FieldLabel,
+  FieldSeparator,
+} from "@/components/ui/field"
+import { Switch } from "@/components/ui/switch"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import {
   CLIENT_STATUSES,
@@ -557,16 +563,20 @@ export function ClientForm({
                 onChange={(v) => patchAddress(a.id, { value: v })}
                 error={errors[`addresses.${i}.value`]}
               />
-              <label className="flex w-fit items-center gap-2 text-xs text-muted-foreground">
-                <input
-                  type="radio"
-                  name="primary-address"
+              {/* Radio terlalu kecil untuk diklik. Mematikan semua switch tetap
+                  aman: saat simpan, alamat pertama dijadikan utama. */}
+              <Field orientation="horizontal" className="w-fit">
+                <Switch
+                  id={`primary-${a.id}`}
                   checked={Boolean(a.isPrimary)}
-                  onChange={() => patchAddress(a.id, { isPrimary: true })}
-                  className="accent-primary"
+                  onCheckedChange={(v) =>
+                    patchAddress(a.id, { isPrimary: Boolean(v) })
+                  }
                 />
-                Alamat utama
-              </label>
+                <FieldLabel htmlFor={`primary-${a.id}`} className="font-normal">
+                  Alamat utama
+                </FieldLabel>
+              </Field>
             </div>
           ))}
           <Button
@@ -612,12 +622,12 @@ export function ClientForm({
                 onValueChange={(v) => patchDocument(d.id, { type: v })}
                 error={errors[`documents.${i}.type`]}
               />
-              <label className="flex min-w-0 cursor-pointer flex-col gap-1.5 rounded-lg has-[:focus-visible]:ring-3 has-[:focus-visible]:ring-ring/30">
+              <label className="flex min-w-0 cursor-pointer flex-col gap-1.5">
                 <span className="text-sm font-medium">File</span>
                 <input
                   type="file"
                   accept={UPLOAD_ACCEPT}
-                  className="sr-only"
+                  className="peer sr-only"
                   onChange={(e) => {
                     const file = e.target.files?.[0]
                     e.target.value = ""
@@ -638,7 +648,8 @@ export function ClientForm({
                     })
                   }}
                 />
-                <span className="flex h-9 items-center gap-2 truncate rounded-lg bg-input/50 px-3 text-sm">
+                {/* Tampil seperti Input: pil, cincin fokus di kotaknya sendiri. */}
+                <span className="flex h-9 items-center gap-2 truncate rounded-4xl border border-transparent bg-input/50 px-3 text-sm transition-[color,box-shadow] peer-focus-visible:border-ring peer-focus-visible:ring-3 peer-focus-visible:ring-ring/30">
                   <FileUp className="size-4 shrink-0 text-muted-foreground" />
                   <span className="truncate">
                     {d.fileName || "Pilih file…"}

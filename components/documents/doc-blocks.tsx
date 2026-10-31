@@ -50,10 +50,14 @@ export function DetailTable({ slip }: { slip: PlacingSlip }) {
 
   const rows: [string, string][] = [
     ["Type of Cover", slip.typeOfCover || "—"],
+  ]
+  if (slip.wordingForms.filter(Boolean).length)
+    rows.push(["Wording Form", slip.wordingForms.filter(Boolean).join("; ")])
+  rows.push(
     ["Insured Name", slip.insuredName.toUpperCase() || "—"],
     ["Correspondence Address", slip.correspondenceAddress || "—"],
-    ["Period of Insurance", period],
-  ]
+    ["Period of Insurance", period]
+  )
   if (slip.occupation) rows.push(["Occupation", slip.occupation])
   if (slip.riskLocation) rows.push(["Risk Location", slip.riskLocation])
   if (slip.cob === "Property" && slip.constructionClass)
@@ -63,8 +67,6 @@ export function DetailTable({ slip }: { slip: PlacingSlip }) {
     ])
   if (slip.cob === "Property" && slip.indemnityPeriod)
     rows.push(["Indemnity Period", slip.indemnityPeriod])
-  if (slip.wordingForms.filter(Boolean).length)
-    rows.push(["Wording Form", slip.wordingForms.filter(Boolean).join("; ")])
 
   return <InfoTable rows={rows} />
 }
@@ -332,6 +334,19 @@ export function DeductibleBlock({ slip }: { slip: PlacingSlip }) {
   )
 }
 
+/**
+ * Clause slip dicetak dari salinannya di slip_clauses. Master clause sudah di
+ * database dan id-nya tidak ada di data contoh, jadi tanpa salinan ini clause
+ * yang tidak diedit di slip hilang dari dokumen.
+ */
+function slipClauses(slip: PlacingSlip) {
+  const copies = Object.entries(slip.clauseCopies ?? {}).map(([id, c]) => ({
+    id,
+    ...c,
+  }))
+  return resolveSlipClauses(slip, copies)
+}
+
 /** inline = wording penuh langsung di daftar (Quotation/Cover Note/CI). */
 export function ClausesBlock({
   slip,
@@ -340,7 +355,7 @@ export function ClausesBlock({
   slip: PlacingSlip
   inline?: boolean
 }) {
-  const clauses = resolveSlipClauses(slip)
+  const clauses = slipClauses(slip)
   if (!clauses.length) return null
 
   return (
@@ -375,7 +390,7 @@ export function ClausesBlock({
 
 /** Wording lengkap di akhir dokumen — dipakai Placing Slip. */
 export function ClauseWordingAppendix({ slip }: { slip: PlacingSlip }) {
-  const clauses = resolveSlipClauses(slip)
+  const clauses = slipClauses(slip)
   if (!clauses.length) return null
 
   return (

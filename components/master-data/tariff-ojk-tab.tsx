@@ -15,6 +15,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { CONSTRUCTION_CLASSES } from "@/lib/data"
 import {
   MOTOR_TARIFFS,
   MOTOR_EXTENSION_TARIFFS,
@@ -156,9 +157,11 @@ export function TariffOjkTab({
                 <TableRow className="hover:bg-transparent">
                   <TableHead className="w-28">Kode OJK</TableHead>
                   <TableHead>Klasifikasi Okupasi</TableHead>
-                  <TableHead className="w-40 text-center">Konstruksi 1 (K1)</TableHead>
-                  <TableHead className="w-40 text-center">Konstruksi 2 (K2)</TableHead>
-                  <TableHead className="w-40 text-center">Konstruksi 3 (K3)</TableHead>
+                  {CONSTRUCTION_CLASSES.map((c) => (
+                    <TableHead key={c.code} className="w-40 text-center">
+                      {c.label}
+                    </TableHead>
+                  ))}
                 </TableRow>
               </TableHeader>
               <TableBody>

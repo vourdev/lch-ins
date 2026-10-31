@@ -219,6 +219,12 @@ export interface PlacingSlip {
    * klausula. Master clause tidak ikut berubah.
    */
   clauseOverrides?: Record<string, ClauseOverride>
+  /**
+   * Salinan judul dan wording setiap clause saat dipilih (tabel slip_clauses).
+   * Dokumen cetak memakai salinan ini, jadi perubahan master clause sesudahnya
+   * tidak mengubah slip yang sudah ada.
+   */
+  clauseCopies?: Record<string, ClauseOverride>
   rateLines: RateLine[]
   tplLines: RateLine[]
   paLines: RateLine[]

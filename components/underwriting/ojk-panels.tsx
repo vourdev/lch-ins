@@ -15,6 +15,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
+import { CONSTRUCTION_CLASSES } from "@/lib/data"
 import {
   MOTOR_EXTENSION_TARIFFS,
   MOTOR_REGIONS,
@@ -198,12 +199,14 @@ export function PropertyPanel({
               if (next) onConstructionClassChange?.(next.toUpperCase())
             }}
           >
-            <ToggleGroupItem value="k1">K1</ToggleGroupItem>
-            <ToggleGroupItem value="k2">K2</ToggleGroupItem>
-            <ToggleGroupItem value="k3">K3</ToggleGroupItem>
+            {CONSTRUCTION_CLASSES.map((c) => (
+              <ToggleGroupItem key={c.code} value={c.code.toLowerCase()}>
+                {c.label}
+              </ToggleGroupItem>
+            ))}
           </ToggleGroup>
         }
-        note="Kelas 1 seluruhnya bahan tidak mudah terbakar, kelas 2 boleh sampai 20% bahan mudah terbakar, kelas 3 selain keduanya."
+        note="Class I seluruhnya bahan tidak mudah terbakar, Class II boleh sampai 20% bahan mudah terbakar, Class III selain keduanya."
       >
         {occ && occRate ? (
           <div className="flex flex-wrap items-center justify-between gap-3">
