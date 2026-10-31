@@ -37,22 +37,24 @@ interface NotificationItem {
 
 const STORAGE_KEY = "lch_read_notifications"
 
+/** Load read notification IDs from localStorage on initial render. */
+function loadReadIds(): Set<string> {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY)
+    if (stored) {
+      return new Set(JSON.parse(stored))
+    }
+  } catch {
+    // Storage unavailable or blocked
+  }
+  return new Set()
+}
+
 export function NotificationPopover() {
   const router = useRouter()
   const today = useToday()
   const [open, setOpen] = React.useState(false)
-  const [readIds, setReadIds] = React.useState<Set<string>>(new Set())
-
-  React.useEffect(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY)
-      if (stored) {
-        setReadIds(new Set(JSON.parse(stored)))
-      }
-    } catch {
-      // Storage unavailable or blocked
-    }
-  }, [])
+  const [readIds, setReadIds] = React.useState<Set<string>>(() => loadReadIds())
 
   const policies = useCollection("policies")
   const slips = useCollection("slips")
