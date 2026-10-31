@@ -299,6 +299,9 @@ export async function listBiScales(): Promise<BiScaleRow[]> {
 // 3. Mutation Functions (COB & Cover Type)
 // ---------------------------------------------------------------------------
 
+// createCob, updateCob, dan deleteCob tidak lagi dipanggil dari aplikasi
+// (lihat app/(app)/master-data/actions.ts). Yang memakainya skrip developer.
+
 export async function createCob(
   input: CobInput,
   userId: string

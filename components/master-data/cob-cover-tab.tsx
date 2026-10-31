@@ -5,13 +5,10 @@ import { ChevronDown, ChevronRight, Edit2, Layers, Plus, Trash2 } from "lucide-r
 import { toast } from "sonner"
 
 import {
-  createCobAction,
   createCoverTypeAction,
-  deleteCobAction,
   deleteCoverTypeAction,
   toggleCobStatusAction,
   toggleCoverTypeStatusAction,
-  updateCobAction,
   updateCoverTypeAction,
 } from "@/app/(app)/master-data/actions"
 import { StatusBadge } from "@/components/shared/status-badge"
@@ -31,13 +28,6 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import {
   Table,
@@ -47,35 +37,25 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import type { CoverType, LookupValue } from "@/lib/generated/prisma/client"
+import type { CoverType } from "@/lib/generated/prisma/client"
 import type { MasterCobRecord } from "@/lib/server/master-data"
 
 export interface CobCoverTabProps {
   initialCobs: MasterCobRecord[]
-  rateModes: LookupValue[]
-  formVariants: LookupValue[]
 }
 
-export function CobCoverTab({
-  initialCobs,
-  rateModes,
-  formVariants,
-}: CobCoverTabProps) {
+/**
+ * COB hanya bisa diaktifkan atau dinonaktifkan di sini. Tambah, ubah, dan
+ * hapus COB lewat developer (lihat app/(app)/master-data/actions.ts). Type of
+ * cover tetap dikelola penuh oleh LCH.
+ */
+export function CobCoverTab({ initialCobs }: CobCoverTabProps) {
   const permission = usePermission()
   const canManage = permission.canManage("/master-data")
   const [cobs, setCobs] = React.useState<MasterCobRecord[]>(initialCobs)
   const [query, setQuery] = React.useState("")
   const [expandedCobIds, setExpandedCobIds] = React.useState<Record<string, boolean>>({})
   const [isPending, startTransition] = React.useTransition()
-
-  // Modal COB State
-  const [cobDialogOpen, setCobDialogOpen] = React.useState(false)
-  const [editingCob, setEditingCob] = React.useState<MasterCobRecord | null>(null)
-  const [cobCode, setCobCode] = React.useState("")
-  const [cobName, setCobName] = React.useState("")
-  const [cobRateModeId, setCobRateModeId] = React.useState(rateModes[0]?.id ?? "")
-  const [cobFormVariantId, setCobFormVariantId] = React.useState(formVariants[0]?.id ?? "")
-  const [cobIsActive, setCobIsActive] = React.useState(true)
 
   // Modal Cover Type State
   const [coverDialogOpen, setCoverDialogOpen] = React.useState(false)
@@ -109,27 +89,6 @@ export function CobCoverTab({
     setExpandedCobIds((prev) => ({ ...prev, [cobId]: !prev[cobId] }))
   }
 
-  // Handle COB Dialog Open
-  function openAddCob() {
-    setEditingCob(null)
-    setCobCode("")
-    setCobName("")
-    setCobRateModeId(rateModes[0]?.id ?? "")
-    setCobFormVariantId(formVariants[0]?.id ?? "")
-    setCobIsActive(true)
-    setCobDialogOpen(true)
-  }
-
-  function openEditCob(cob: MasterCobRecord) {
-    setEditingCob(cob)
-    setCobCode(cob.code)
-    setCobName(cob.name)
-    setCobRateModeId(cob.rateModeId)
-    setCobFormVariantId(cob.formVariantId)
-    setCobIsActive(cob.isActive)
-    setCobDialogOpen(true)
-  }
-
   // Handle Cover Type Dialog Open
   function openAddCover(cobId: string, cobCodeVal: string) {
     setParentCobId(cobId)
@@ -149,68 +108,6 @@ export function CobCoverTab({
     setCoverAbbreviation(cover.abbreviation ?? "")
     setCoverIsActive(cover.isActive)
     setCoverDialogOpen(true)
-  }
-
-  function handleSaveCob() {
-    if (!cobCode.trim() || !cobName.trim()) {
-      toast.error("Kode dan nama COB wajib diisi")
-      return
-    }
-
-    startTransition(async () => {
-      if (editingCob) {
-        const res = await updateCobAction(editingCob.id, {
-          code: cobCode,
-          name: cobName,
-          rateModeId: cobRateModeId,
-          formVariantId: cobFormVariantId,
-          isActive: cobIsActive,
-        })
-        if (!res.ok) {
-          toast.error(res.error)
-          return
-        }
-        toast.success("COB berhasil diperbarui")
-        setCobs((prev) =>
-          prev.map((c) =>
-            c.id === editingCob.id
-              ? {
-                  ...c,
-                  code: cobCode,
-                  name: cobName,
-                  rateModeId: cobRateModeId,
-                  formVariantId: cobFormVariantId,
-                  isActive: cobIsActive,
-                  rateMode: rateModes.find((r) => r.id === cobRateModeId) ?? c.rateMode,
-                  formVariant: formVariants.find((f) => f.id === cobFormVariantId) ?? c.formVariant,
-                }
-              : c
-          )
-        )
-      } else {
-        const res = await createCobAction({
-          code: cobCode,
-          name: cobName,
-          rateModeId: cobRateModeId,
-          formVariantId: cobFormVariantId,
-          isActive: cobIsActive,
-        })
-        if (!res.ok || !res.data) {
-          toast.error(res.error)
-          return
-        }
-        toast.success("COB baru berhasil ditambahkan")
-        const newRecord: MasterCobRecord = {
-          ...(res.data as MasterCobRecord),
-          rateMode: rateModes.find((r) => r.id === cobRateModeId)!,
-          formVariant: formVariants.find((f) => f.id === cobFormVariantId)!,
-          coverTypes: [],
-          _count: { sppa: 0, placingSlips: 0, policies: 0, clients: 0 },
-        }
-        setCobs((prev) => [newRecord, ...prev])
-      }
-      setCobDialogOpen(false)
-    })
   }
 
   function handleSaveCover() {
@@ -318,34 +215,6 @@ export function CobCoverTab({
     })
   }
 
-  function handleDeleteCob(cob: MasterCobRecord) {
-    const totalUsage =
-      cob._count.sppa +
-      cob._count.placingSlips +
-      cob._count.policies +
-      cob._count.clients +
-      cob.coverTypes.length
-
-    if (totalUsage > 0) {
-      toast.error(
-        `COB "${cob.name}" sedang digunakan atau memiliki sub-cover type. Nonaktifkan statusnya alih-alih menghapus.`
-      )
-      return
-    }
-
-    if (!confirm(`Hapus COB "${cob.name}"?`)) return
-
-    startTransition(async () => {
-      const res = await deleteCobAction(cob.id)
-      if (!res.ok) {
-        toast.error(res.error)
-        return
-      }
-      setCobs((prev) => prev.filter((c) => c.id !== cob.id))
-      toast.success("COB berhasil dihapus")
-    })
-  }
-
   function handleDeleteCover(cobId: string, cover: CoverType) {
     if (!confirm(`Hapus Cover Type "${cover.name}"?`)) return
 
@@ -378,12 +247,6 @@ export function CobCoverTab({
           onValueChange={setQuery}
           placeholder="Cari kode atau nama COB / Cover Type…"
         />
-        {canManage && (
-          <Button size="sm" onClick={openAddCob} className="h-9 gap-1.5 text-xs">
-            <Plus className="size-4" />
-            Tambah COB Baru
-          </Button>
-        )}
       </div>
 
       {/* COB Table */}
@@ -469,15 +332,6 @@ export function CobCoverTab({
                       {canManage && (
                         <TableCell className="text-right pr-4">
                           <div className="flex items-center justify-end gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => openEditCob(cob)}
-                              className="size-7 text-muted-foreground hover:text-foreground"
-                              title="Edit COB"
-                            >
-                              <Edit2 className="size-3.5" />
-                            </Button>
                             <Switch
                               checked={cob.isActive}
                               onCheckedChange={() => handleToggleCob(cob.id, cob.isActive)}
@@ -485,20 +339,6 @@ export function CobCoverTab({
                               title={cob.isActive ? "Nonaktifkan COB" : "Aktifkan COB"}
                               className="scale-75"
                             />
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleDeleteCob(cob)}
-                              disabled={isPending || totalUsed > 0 || cob.coverTypes.length > 0}
-                              className="size-7 text-destructive hover:bg-destructive/10"
-                              title={
-                                totalUsed > 0
-                                  ? "Tidak dapat dihapus karena sudah dipakai transaksi"
-                                  : "Hapus COB"
-                              }
-                            >
-                              <Trash2 className="size-3.5" />
-                            </Button>
                           </div>
                         </TableCell>
                       )}
@@ -602,118 +442,6 @@ export function CobCoverTab({
           </TableBody>
         </Table>
       </Card>
-
-      {/* Dialog COB */}
-      <Dialog open={cobDialogOpen} onOpenChange={setCobDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>{editingCob ? "Edit Class of Business" : "Tambah COB Baru"}</DialogTitle>
-            <DialogDescription className="text-xs">
-              Konfigurasi kode COB 2 digit dan varian penentuan rate pada dokumen underwriting.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="flex flex-col gap-3.5 py-2">
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="cob-code" className="text-xs font-medium">
-                Kode COB (2 digit unik) <span className="text-destructive">*</span>
-              </Label>
-              <Input
-                id="cob-code"
-                placeholder="Contoh: 01, 03, 11"
-                value={cobCode}
-                inputMode="numeric"
-                onChange={(e) => setCobCode(e.target.value.replace(/\D/g, ""))}
-                maxLength={4}
-                className="h-8.5 font-mono text-xs"
-              />
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="cob-name" className="text-xs font-medium">
-                Nama Class of Business <span className="text-destructive">*</span>
-              </Label>
-              <Input
-                id="cob-name"
-                placeholder="Contoh: Property, Marine Cargo, Motor Vehicle"
-                value={cobName}
-                onChange={(e) => setCobName(e.target.value)}
-                className="h-8.5 text-xs"
-              />
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="cob-ratemode" className="text-xs font-medium">
-                Satuan Rate Bawaan <span className="text-destructive">*</span>
-              </Label>
-              <Select
-                items={rateModes.map((rm) => ({ label: `${rm.name} (${rm.code})`, value: rm.id }))}
-                value={cobRateModeId}
-                onValueChange={(val) => setCobRateModeId(val ?? "")}
-              >
-                <SelectTrigger id="cob-ratemode" className="h-8.5 text-xs">
-                  <SelectValue placeholder="Pilih satuan rate" />
-                </SelectTrigger>
-                <SelectContent>
-                  {rateModes.map((rm) => (
-                    <SelectItem key={rm.id} value={rm.id} className="text-xs">
-                      {rm.name} ({rm.code})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="cob-formvariant" className="text-xs font-medium">
-                Varian Form Placing Slip <span className="text-destructive">*</span>
-              </Label>
-              <Select
-                items={formVariants.map((fv) => ({ label: `${fv.name} (${fv.code})`, value: fv.id }))}
-                value={cobFormVariantId}
-                onValueChange={(val) => setCobFormVariantId(val ?? "")}
-              >
-                <SelectTrigger id="cob-formvariant" className="h-8.5 text-xs">
-                  <SelectValue placeholder="Pilih varian form" />
-                </SelectTrigger>
-                <SelectContent>
-                  {formVariants.map((fv) => (
-                    <SelectItem key={fv.id} value={fv.id} className="text-xs">
-                      {fv.name} ({fv.code})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="flex items-center justify-between rounded-lg border p-2.5">
-              <span className="text-xs font-medium">Status Aktif Operasional</span>
-              <Switch checked={cobIsActive} onCheckedChange={setCobIsActive} />
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setCobDialogOpen(false)}
-              className="text-xs"
-            >
-              Batal
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              onClick={handleSaveCob}
-              disabled={isPending}
-              className="text-xs"
-            >
-              {editingCob ? "Simpan Perubahan" : "Tambah COB"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Dialog Cover Type */}
       <Dialog open={coverDialogOpen} onOpenChange={setCoverDialogOpen}>

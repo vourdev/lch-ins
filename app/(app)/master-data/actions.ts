@@ -7,7 +7,6 @@ import { z } from "zod"
 import type {
   Adjuster,
   BankAccount,
-  ClassOfBusiness,
   CoverType,
   Currency,
   Insurer,
@@ -24,13 +23,11 @@ import {
 import {
   createAdjuster,
   createBankAccount,
-  createCob,
   createCoverType,
   createCurrency,
   createInsurer,
   createLookupValue,
   createWordingForm,
-  deleteCob,
   deleteCoverType,
   deleteLookupValue,
   toggleAdjusterStatus,
@@ -43,7 +40,6 @@ import {
   toggleWordingFormStatus,
   updateAdjuster,
   updateBankAccount,
-  updateCob,
   updateCoverType,
   updateInsurer,
   updateLookupValue,
@@ -69,14 +65,6 @@ export interface ActionResponse<T = unknown> {
 // ---------------------------------------------------------------------------
 // Zod Schemas
 // ---------------------------------------------------------------------------
-
-const cobSchema = z.object({
-  code: z.string().trim().min(2, "Kode COB minimal 2 karakter"),
-  name: z.string().trim().min(2, "Nama COB minimal 2 karakter"),
-  rateModeId: z.string().min(1, "Pilih satuan rate yang valid"),
-  formVariantId: z.string().min(1, "Pilih varian form yang valid"),
-  isActive: z.boolean().optional(),
-})
 
 const coverTypeSchema = z.object({
   cobId: z.string().min(1, "Pilih COB yang valid"),
@@ -148,40 +136,10 @@ const lookupValueSchema = z.object({
 // 1. COB Actions
 // ---------------------------------------------------------------------------
 
-export async function createCobAction(
-  data: z.infer<typeof cobSchema>
-): Promise<ActionResponse<ClassOfBusiness>> {
-  try {
-    const session = await requireManage("/master-data")
-    const parsed = cobSchema.parse(data)
-    const res = await createCob(parsed, session.id)
-    revalidatePath("/master-data")
-    return { ok: true, data: res }
-  } catch (err) {
-    return {
-      ok: false,
-      error: err instanceof Error ? err.message : "Gagal menambah COB",
-    }
-  }
-}
-
-export async function updateCobAction(
-  id: string,
-  data: z.infer<typeof cobSchema>
-): Promise<ActionResponse<ClassOfBusiness>> {
-  try {
-    const session = await requireManage("/master-data")
-    const parsed = cobSchema.parse(data)
-    const res = await updateCob(id, parsed, session.id)
-    revalidatePath("/master-data")
-    return { ok: true, data: res }
-  } catch (err) {
-    return {
-      ok: false,
-      error: err instanceof Error ? err.message : "Gagal memperbarui COB",
-    }
-  }
-}
+// Dari aplikasi, COB hanya bisa diaktifkan atau dinonaktifkan. Tambah, ubah,
+// dan hapus COB dikerjakan developer lewat migrasi, sesuai kesepakatan dengan
+// LCH pada 31 Oktober 2026: COB baru perlu penyesuaian form placing slip,
+// satuan rate, tarif, dan dokumen cetak sebelum bisa dipakai.
 
 export async function toggleCobStatusAction(
   id: string,
@@ -196,20 +154,6 @@ export async function toggleCobStatusAction(
     return {
       ok: false,
       error: err instanceof Error ? err.message : "Gagal mengubah status COB",
-    }
-  }
-}
-
-export async function deleteCobAction(id: string): Promise<ActionResponse<void>> {
-  try {
-    const session = await requireManage("/master-data")
-    await deleteCob(id, session.id)
-    revalidatePath("/master-data")
-    return { ok: true }
-  } catch (err) {
-    return {
-      ok: false,
-      error: err instanceof Error ? err.message : "Gagal menghapus COB",
     }
   }
 }
