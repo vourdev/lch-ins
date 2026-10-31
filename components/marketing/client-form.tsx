@@ -102,7 +102,7 @@ const schema = z
     idNumber: z.string().optional(),
     idType: z.string().optional(),
     contactPerson: z.string(),
-    contactPersonIdNumber: nik,
+    contactPersonIdNumber: z.string().optional(),
     email,
     phone: z
       .string()
@@ -131,6 +131,19 @@ const schema = z
         code: "custom",
         path: ["contactPerson"],
         message: "Nama PIC wajib diisi untuk klien korporasi",
+      })
+    }
+    // KTP PIC boleh kosong dan hanya diperiksa untuk korporasi. Klien lama
+    // tanpa KTP PIC datang sebagai undefined, dan untuk perorangan isiannya
+    // tersembunyi, jadi error di situ membuat simpan gagal tanpa pesan.
+    if (
+      d.clientType === "Korporasi" &&
+      !nik.safeParse(d.contactPersonIdNumber ?? "").success
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["contactPersonIdNumber"],
+        message: "Nomor KTP harus 16 digit angka",
       })
     }
     if (
