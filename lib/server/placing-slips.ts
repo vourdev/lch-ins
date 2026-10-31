@@ -1528,7 +1528,8 @@ export async function togglePlacingSlipStatus(
       userId,
       entity: "placing_slips",
       entityId: id,
-      action: "Update",
+      // Pembatalan punya aksi sendiri di audit trail (Batal), bukan Ubah.
+      action: status === "Cancelled" ? "Cancel" : "Update",
       before: { status: existing.status },
       after: { status },
     })

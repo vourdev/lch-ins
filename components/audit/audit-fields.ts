@@ -56,9 +56,17 @@ const FIELD_LABELS: Record<string, string> = {
   clientTypeId: "Jenis klien",
   idTypeId: "Jenis identitas",
   idNumber: "Nomor identitas",
+  birthPlace: "Tempat lahir",
+  birthDate: "Tanggal lahir",
   npwp: "NPWP",
+  contactPerson: "Nama PIC",
+  contactPersonIdNumber: "No. KTP PIC",
   incomeSourceId: "Sumber penghasilan",
   insurancePurposeId: "Tujuan asuransi",
+  insurancePurposeNote: "Keterangan tujuan asuransi",
+  kycDate: "Tanggal KYC",
+  addresses: "Alamat",
+  documents: "Berkas KYC",
   addressTypeId: "Jenis alamat",
   positionId: "Jabatan",
   insuredName: "Nama tertanggung",
@@ -103,6 +111,9 @@ const FIELD_LABELS: Record<string, string> = {
   brandId: "Merek kendaraan",
   vehicleTypeId: "Tipe kendaraan",
   sortOrder: "Urutan",
+  priority: "Prioritas",
+  lookupType: "Jenis daftar",
+  isSystem: "Bawaan sistem",
   formVariantId: "Varian formulir",
   resetPeriodId: "Periode reset",
   claimNo: "Nomor klaim",
@@ -124,6 +135,9 @@ const FIELD_LABELS: Record<string, string> = {
   bankAccountId: "Rekening bank",
   accountNo: "Nomor rekening",
   accountName: "Nama rekening",
+  isPremiumTrust: "Rekening titipan premi",
+  coaAccountId: "Akun COA",
+  passwordReset: "Reset kata sandi",
   createdBy: "Dibuat oleh",
   createdById: "Dibuat oleh",
   releasedBy: "Dirilis oleh",
@@ -141,6 +155,9 @@ const MONEY_FIELDS = new Set([
   "claimedAmount",
   "paidAmount",
 ])
+
+/** Daftar teks yang isinya sendiri memuat koma, jadi ditampilkan per baris. */
+const LINE_LIST_FIELDS = new Set(["addresses", "documents"])
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -210,7 +227,9 @@ export function formatAuditValue(
       return value.map((r) => ROLE_LABELS[r as RoleCode] ?? String(r)).join(", ")
     }
     if (value.every((v) => typeof v !== "object" || v === null)) {
-      return value.map((v) => formatAuditValue(key, v, refNames)).join(", ")
+      return value
+        .map((v) => formatAuditValue(key, v, refNames))
+        .join(LINE_LIST_FIELDS.has(key) ? "\n" : ", ")
     }
     return `${value.length} data`
   }

@@ -538,6 +538,40 @@ export async function getClientById(
 /**
  * Persist a new client record with associated addresses and documents into PostgreSQL.
  */
+/**
+ * Isi klien untuk audit trail. Alamat dan berkas KYC ada di tabel sendiri,
+ * jadi disertakan sebagai teks supaya perubahannya ikut tercatat (SIT-012).
+ * Diurutkan supaya alamat yang disimpan ulang dengan urutan berbeda tidak
+ * terbaca sebagai perubahan.
+ */
+async function clientAuditSnapshot(
+  tx: Prisma.TransactionClient,
+  clientId: string
+) {
+  const row = await tx.client.findUnique({
+    where: { id: clientId },
+    include: {
+      addresses: { include: { addressType: true } },
+      documents: { include: { documentType: true } },
+    },
+  })
+  if (!row) return null
+
+  const { addresses, documents, ...client } = row
+  return {
+    ...client,
+    addresses: addresses
+      .map(
+        (a) =>
+          `${a.addressType.name}${a.isPrimary ? " (utama)" : ""}: ${a.address}`
+      )
+      .sort(),
+    documents: documents
+      .map((d) => `${d.documentType.name}: ${d.fileName}`)
+      .sort(),
+  }
+}
+
 function missingUpload(fileName: string) {
   return new Error(`Isi berkas ${fileName} belum terunggah. Pilih ulang filenya.`)
 }
@@ -682,7 +716,7 @@ export async function createClient(
         entity: "clients",
         entityId: created.id,
         action: "Create",
-        after: created,
+        after: await clientAuditSnapshot(tx, created.id),
       })
     }
 
@@ -746,9 +780,7 @@ export async function updateClient(
   const corporate = input.clientType === "Korporasi"
 
   await prisma.$transaction(async (tx) => {
-    const before = await tx.client.findUnique({
-      where: { id: existing.dbId },
-    })
+    const before = await clientAuditSnapshot(tx, existing.dbId)
 
     await tx.client.update({
       where: { id: existing.dbId },
@@ -869,16 +901,13 @@ export async function updateClient(
     }
 
     if (userId) {
-      const after = await tx.client.findUnique({
-        where: { id: existing.dbId },
-      })
       await recordAudit(tx, {
         userId,
         entity: "clients",
         entityId: existing.dbId,
         action: "Update",
         before,
-        after,
+        after: await clientAuditSnapshot(tx, existing.dbId),
       })
     }
   })
@@ -957,11 +986,8 @@ export async function deleteClient(id: string, userId?: string): Promise<void> {
     )
   }
 
-  const before = await prisma.client.findUnique({
-    where: { id: existing.dbId },
-  })
-
   await prisma.$transaction(async (tx) => {
+    const before = await clientAuditSnapshot(tx, existing.dbId)
     await tx.clientAddress.deleteMany({ where: { clientId: existing.dbId } })
     const documents = await tx.clientDocument.findMany({
       where: { clientId: existing.dbId },
