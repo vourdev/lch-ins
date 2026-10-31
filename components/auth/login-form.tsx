@@ -6,7 +6,10 @@ import { AlertTriangle, Eye, EyeOff, LoaderCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Field, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import { authClient, signIn } from "@/lib/auth-client"
+import { authClient, signIn, signOut } from "@/lib/auth-client"
+
+const INACTIVE_MESSAGE =
+  "Akun ini sudah dinonaktifkan. Hubungi Admin untuk mengaktifkan kembali."
 
 export function LoginForm({ next }: { next: string }) {
   const [email, setEmail] = React.useState("")
@@ -27,13 +30,21 @@ export function LoginForm({ next }: { next: string }) {
         const session = await authClient.getSession()
         if (!active) return
         if (session?.data?.user) {
+          const user = session.data.user as {
+            mustChangePassword?: boolean
+            isActive?: boolean
+          }
+          // Sesi lama milik akun yang kini nonaktif ditolak server. Kalau tetap
+          // dialihkan, browser bolak-balik antara /login dan halaman tujuan.
+          if (user.isActive === false) {
+            await signOut()
+            if (active) setError(INACTIVE_MESSAGE)
+            return
+          }
           setCheckingSession(true)
-          const userMustChange = (
-            session.data.user as { mustChangePassword?: boolean }
-          ).mustChangePassword
           const safeNext =
             next.startsWith("/") && !next.startsWith("//") ? next : "/"
-          const target = userMustChange ? "/change-password" : safeNext
+          const target = user.mustChangePassword ? "/change-password" : safeNext
           window.location.replace(target)
         }
       } catch {
@@ -66,8 +77,13 @@ export function LoginForm({ next }: { next: string }) {
     if (error) {
       // Better Auth error messages are in English and distinguish between
       // non-existent email and invalid password. Normalize to a single generic
-      // message to prevent user enumeration.
-      setError("Email atau kata sandi salah.")
+      // message to prevent user enumeration. ACCOUNT_INACTIVE only comes back
+      // after the password matched (lib/auth.ts), so it can be named.
+      setError(
+        error.code === "ACCOUNT_INACTIVE"
+          ? INACTIVE_MESSAGE
+          : "Email atau kata sandi salah."
+      )
       setPending(false)
       return
     }

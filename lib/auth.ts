@@ -2,6 +2,7 @@ import "server-only"
 
 import { betterAuth } from "better-auth"
 import { prismaAdapter } from "better-auth/adapters/prisma"
+import { APIError } from "better-auth/api"
 import { nextCookies } from "better-auth/next-js"
 
 import { prisma } from "./prisma"
@@ -62,6 +63,30 @@ export const auth = betterAuth({
         input: false,
       },
       roleId: { type: "string", required: false, input: false },
+    },
+  },
+
+  databaseHooks: {
+    session: {
+      create: {
+        // Akun nonaktif ditolak saat login. Better Auth tidak mengenal kolom
+        // isActive, jadi tanpa hook ini sesi tetap dibuat, aplikasi menolaknya,
+        // dan browser bolak-balik antara /login dan halaman tujuan (SIT-003).
+        // Hook ini jalan setelah kata sandi cocok, jadi pesannya tidak membuka
+        // keberadaan akun ke orang yang tidak tahu kata sandinya.
+        before: async (session) => {
+          const user = await prisma.user.findUnique({
+            where: { id: session.userId },
+            select: { isActive: true },
+          })
+          if (!user?.isActive) {
+            throw APIError.from("FORBIDDEN", {
+              code: "ACCOUNT_INACTIVE",
+              message: "Akun ini sudah dinonaktifkan.",
+            })
+          }
+        },
+      },
     },
   },
 
