@@ -116,6 +116,7 @@ const LOOKUPS: {
       ["claim", "Klaim"],
       ["accounting", "Accounting"],
       ["finance", "Finance"],
+      ["direksi", "Direksi"],
     ],
   },
   {

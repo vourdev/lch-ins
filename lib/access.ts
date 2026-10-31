@@ -58,7 +58,7 @@ export const ROLE_LABELS: Record<RoleCode, string> = {
 }
 
 /**
- * Validate whether a code is one of the 6 official LCH canonical roles.
+ * Validate whether a code is one of the official LCH canonical roles.
  */
 export function isValidRoleCode(code: string): code is RoleCode {
   return (ALLOWED_ROLE_CODES as readonly string[]).includes(code)
@@ -113,7 +113,7 @@ const COLUMNS = [
  * objek, supaya baris di sini bisa dibandingkan sebaris demi sebaris dengan
  * file aslinya:
  *
- *   Admin  Marketing  Placement/Teknik  Klaim  Finance  Accounting
+ *   Admin  Marketing  Placement/Teknik  Klaim  Finance  Accounting  Direksi
  *
  * Kelola berarti lihat, tambah, ubah, hapus, dan release. Lihat berarti
  * halamannya tetap terbuka tetapi tindakan yang mengubah data ditolak. Tidak
@@ -135,7 +135,7 @@ export const ACCESS_MATRIX: Record<string, readonly AccessLevel[]> = {
   "/finance/payments": [K, L, L, L, K, K, L],
   "/finance/receivables": [K, L, L, L, K, K, L],
   "/accounting/journal": [K, T, T, T, K, K, L],
-  "/accounting/statements": [K, T, T, L, L, K, L],
+  "/accounting/statements": [K, T, T, T, L, K, L],
   "/master-data": [K, T, K, T, T, T, L],
   "/reports": [K, L, K, K, K, K, L],
   "/users": [K, T, T, T, T, T, L],
