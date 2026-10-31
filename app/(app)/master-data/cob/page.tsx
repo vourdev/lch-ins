@@ -16,7 +16,10 @@ export default async function MasterDataCobPage() {
 
   return (
     <PageShell>
-      <PageHeader title="COB & Cover Type" />
+      <PageHeader
+        title="COB & Cover Type"
+        description="Class of business beserta type of cover yang dipakai di SPPA, placing slip, dan polis."
+      />
       <CobCoverTab initialCobs={initialCobs} />
     </PageShell>
   )

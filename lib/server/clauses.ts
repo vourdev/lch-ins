@@ -72,6 +72,7 @@ export async function listClauses(filter: ClauseFilter) {
     items,
     total,
     page,
+    pageSize: CLAUSE_PAGE_SIZE,
     pageCount: Math.max(1, Math.ceil(total / CLAUSE_PAGE_SIZE)),
   }
 }

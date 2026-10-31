@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { ChevronDown, ChevronRight, Edit2, Plus, Trash2 } from "lucide-react"
+import { ChevronDown, ChevronRight, Pencil, Plus, Power, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 
 import {
@@ -14,8 +14,14 @@ import {
   updateVehicleBrandAction,
   updateVehicleTypeAction,
 } from "@/app/(app)/master-data/actions"
+import {
+  ACTION_COL_CLASS,
+  RowActions,
+  type RowAction,
+} from "@/components/shared/row-actions"
 import { StatusBadge } from "@/components/shared/status-badge"
 import { TableEmpty } from "@/components/shared/table-empty"
+import { TablePagination, usePagination } from "@/components/shared/table-pagination"
 import { SearchInput } from "@/components/shared/table-toolbar"
 import { usePermission } from "@/components/auth/permission-provider"
 import { Badge } from "@/components/ui/badge"
@@ -84,6 +90,15 @@ export function VehiclesTab({ initialBrands }: VehiclesTabProps) {
         b.types.some((t) => t.name.toLowerCase().includes(q))
     )
   }, [brands, query])
+
+  const {
+    page,
+    pageSize,
+    totalItems,
+    paginatedItems,
+    setPage,
+    setPageSize,
+  } = usePagination(filteredBrands, 10)
 
   function toggleExpand(brandId: string) {
     setExpandedBrandIds((prev) => ({ ...prev, [brandId]: !prev[brandId] }))
@@ -297,7 +312,6 @@ export function VehiclesTab({ initialBrands }: VehiclesTabProps) {
       toast.error(`Hapus dulu semua tipe di bawah merek "${brand.name}".`)
       return
     }
-    if (!confirm(`Hapus merek "${brand.name}"?`)) return
 
     startTransition(async () => {
       const res = await deleteVehicleBrandAction(brand.id)
@@ -317,7 +331,6 @@ export function VehiclesTab({ initialBrands }: VehiclesTabProps) {
       )
       return
     }
-    if (!confirm(`Hapus tipe "${type.name}"?`)) return
 
     startTransition(async () => {
       const res = await deleteVehicleTypeAction(type.id)
@@ -339,17 +352,75 @@ export function VehiclesTab({ initialBrands }: VehiclesTabProps) {
     })
   }
 
+  function brandActions(brand: VehicleBrandRecord): RowAction[] {
+    const blockedReason =
+      brand.usage > 0 ? "sudah dipakai" : brand.types.length > 0 ? "masih ada tipe" : null
+    return [
+      { label: "Edit merek", icon: Pencil, onSelect: () => openEditBrand(brand) },
+      {
+        label: "Tambah tipe",
+        icon: Plus,
+        onSelect: () => {
+          setExpandedBrandIds((prev) => ({ ...prev, [brand.id]: true }))
+          openAddType(brand)
+        },
+      },
+      {
+        label: brand.isActive ? "Nonaktifkan" : "Aktifkan",
+        icon: Power,
+        disabled: isPending,
+        onSelect: () => handleToggleBrand(brand.id, brand.isActive),
+      },
+      {
+        label: blockedReason ? `Hapus (${blockedReason})` : "Hapus",
+        icon: Trash2,
+        destructive: true,
+        disabled: isPending || blockedReason !== null,
+        confirm: {
+          title: "Hapus merek ini?",
+          description: `Merek ${brand.name} dihapus permanen.`,
+          actionLabel: "Hapus",
+        },
+        onSelect: () => handleDeleteBrand(brand),
+      },
+    ]
+  }
+
+  function typeActions(brand: VehicleBrandRecord, type: VehicleTypeRecord): RowAction[] {
+    return [
+      { label: "Edit tipe", icon: Pencil, onSelect: () => openEditType(brand, type) },
+      {
+        label: type.isActive ? "Nonaktifkan" : "Aktifkan",
+        icon: Power,
+        disabled: isPending,
+        onSelect: () => handleToggleType(brand.id, type.id, type.isActive),
+      },
+      {
+        label: type.usage > 0 ? "Hapus (sudah dipakai)" : "Hapus",
+        icon: Trash2,
+        destructive: true,
+        disabled: isPending || type.usage > 0,
+        confirm: {
+          title: "Hapus tipe ini?",
+          description: `Tipe ${type.name} dihapus permanen.`,
+          actionLabel: "Hapus",
+        },
+        onSelect: () => handleDeleteType(brand.id, type),
+      },
+    ]
+  }
+
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-card p-3.5 shadow-xs">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <SearchInput
           value={query}
           onValueChange={setQuery}
           placeholder="Cari merek atau tipe kendaraan…"
         />
         {canManage && (
-          <Button size="sm" onClick={openAddBrand} className="h-9 gap-1.5 text-xs">
-            <Plus className="size-4" />
+          <Button onClick={openAddBrand}>
+            <Plus data-icon="inline-start" />
             Tambah Merek Baru
           </Button>
         )}
@@ -359,19 +430,21 @@ export function VehiclesTab({ initialBrands }: VehiclesTabProps) {
         <Table className="min-w-180">
           <TableHeader>
             <TableRow className="hover:bg-transparent">
-              <TableHead className="w-12"></TableHead>
+              {canManage && <TableHead className={ACTION_COL_CLASS}>Aksi</TableHead>}
+              <TableHead className="w-12">
+                <span className="sr-only">Buka tipe</span>
+              </TableHead>
               <TableHead className="w-20">Urutan</TableHead>
               <TableHead>Nama Merek Kendaraan</TableHead>
               <TableHead className="w-28 text-center">Jumlah Tipe</TableHead>
               <TableHead className="w-32">Penggunaan</TableHead>
-              <TableHead className="w-24">Status</TableHead>
-              <TableHead className="w-32 text-right pr-4">Aksi</TableHead>
+              <TableHead className="w-24 pr-4">Status</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filteredBrands.length === 0 ? (
               <TableEmpty
-                colSpan={7}
+                colSpan={canManage ? 7 : 6}
                 message={
                   query
                     ? "Tidak ada merek kendaraan yang cocok dengan pencarian."
@@ -379,13 +452,18 @@ export function VehiclesTab({ initialBrands }: VehiclesTabProps) {
                 }
               />
             ) : (
-              filteredBrands.map((brand) => {
+              paginatedItems.map((brand) => {
                 const isExpanded = expandedBrandIds[brand.id]
 
                 return (
                   <React.Fragment key={brand.id}>
                     <TableRow>
-                      <TableCell className="pl-3">
+                      {canManage && (
+                        <TableCell className={ACTION_COL_CLASS}>
+                          <RowActions actions={brandActions(brand)} />
+                        </TableCell>
+                      )}
+                      <TableCell>
                         <Button
                           variant="ghost"
                           size="icon"
@@ -423,55 +501,14 @@ export function VehiclesTab({ initialBrands }: VehiclesTabProps) {
                           </span>
                         )}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="pr-4">
                         <StatusBadge status={brand.isActive ? "Active" : "Inactive"} />
-                      </TableCell>
-                      <TableCell className="text-right pr-4">
-                        {canManage ? (
-                          <div className="flex items-center justify-end gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => openEditBrand(brand)}
-                              className="size-7 text-muted-foreground hover:text-foreground"
-                              title="Edit Merek"
-                              aria-label={`Edit merek ${brand.name}`}
-                            >
-                              <Edit2 className="size-3.5" />
-                            </Button>
-                            <Switch
-                              checked={brand.isActive}
-                              onCheckedChange={() => handleToggleBrand(brand.id, brand.isActive)}
-                              disabled={isPending}
-                              title={brand.isActive ? "Nonaktifkan Merek" : "Aktifkan Merek"}
-                              aria-label={`Status merek ${brand.name}`}
-                              className="scale-75"
-                            />
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleDeleteBrand(brand)}
-                              disabled={isPending || brand.usage > 0 || brand.types.length > 0}
-                              className="size-7 text-muted-foreground hover:text-destructive"
-                              title={
-                                brand.usage > 0
-                                  ? "Tidak dapat dihapus karena sudah dipakai transaksi"
-                                  : brand.types.length > 0
-                                    ? "Hapus dulu semua tipe di merek ini"
-                                    : "Hapus Merek"
-                              }
-                              aria-label={`Hapus merek ${brand.name}`}
-                            >
-                              <Trash2 className="size-3.5" />
-                            </Button>
-                          </div>
-                        ) : null}
                       </TableCell>
                     </TableRow>
 
                     {isExpanded && (
                       <TableRow className="bg-muted/15 hover:bg-muted/20">
-                        <TableCell colSpan={7} className="p-0 pl-12 pr-4 py-3">
+                        <TableCell colSpan={canManage ? 7 : 6} className="p-0 pl-12 pr-4 py-3">
                           <div className="flex flex-col gap-2 rounded-md border bg-card/60 p-3">
                             <div className="flex items-center justify-between border-b pb-2">
                               <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
@@ -482,7 +519,7 @@ export function VehiclesTab({ initialBrands }: VehiclesTabProps) {
                                   size="sm"
                                   variant="outline"
                                   onClick={() => openAddType(brand)}
-                                  className="h-7 gap-1 text-xs"
+                                  className="h-7 gap-1"
                                   aria-label={`Tambah tipe untuk merek ${brand.name}`}
                                 >
                                   <Plus className="size-3" />
@@ -500,9 +537,10 @@ export function VehiclesTab({ initialBrands }: VehiclesTabProps) {
                                 {brand.types.map((type) => (
                                   <div
                                     key={type.id}
-                                    className="flex items-center justify-between py-2"
+                                    className="flex items-center gap-3 py-2"
                                   >
-                                    <div className="flex items-center gap-2">
+                                    {canManage && <RowActions actions={typeActions(brand, type)} />}
+                                    <div className="flex min-w-0 flex-1 items-center gap-2">
                                       <span className="font-medium text-foreground">
                                         {type.name}
                                       </span>
@@ -512,50 +550,7 @@ export function VehiclesTab({ initialBrands }: VehiclesTabProps) {
                                         </span>
                                       ) : null}
                                     </div>
-                                    <div className="flex items-center gap-2">
-                                      <StatusBadge status={type.isActive ? "Active" : "Inactive"} />
-                                      {canManage && (
-                                        <>
-                                          <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            onClick={() => openEditType(brand, type)}
-                                            className="size-6 text-muted-foreground hover:text-foreground"
-                                            title="Edit Tipe"
-                                            aria-label={`Edit tipe ${type.name}`}
-                                          >
-                                            <Edit2 className="size-3" />
-                                          </Button>
-                                          <Switch
-                                            checked={type.isActive}
-                                            onCheckedChange={() =>
-                                              handleToggleType(brand.id, type.id, type.isActive)
-                                            }
-                                            disabled={isPending}
-                                            className="scale-65"
-                                            title={
-                                              type.isActive ? "Nonaktifkan Tipe" : "Aktifkan Tipe"
-                                            }
-                                            aria-label={`Status tipe ${type.name}`}
-                                          />
-                                          <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            onClick={() => handleDeleteType(brand.id, type)}
-                                            disabled={isPending || type.usage > 0}
-                                            className="size-6 text-muted-foreground hover:text-destructive"
-                                            title={
-                                              type.usage > 0
-                                                ? "Tidak dapat dihapus karena sudah dipakai transaksi"
-                                                : "Hapus Tipe"
-                                            }
-                                            aria-label={`Hapus tipe ${type.name}`}
-                                          >
-                                            <Trash2 className="size-3" />
-                                          </Button>
-                                        </>
-                                      )}
-                                    </div>
+                                    <StatusBadge status={type.isActive ? "Active" : "Inactive"} />
                                   </div>
                                 ))}
                               </div>
@@ -572,20 +567,29 @@ export function VehiclesTab({ initialBrands }: VehiclesTabProps) {
         </Table>
       </Card>
 
+      <TablePagination
+        page={page}
+        pageSize={pageSize}
+        totalItems={totalItems}
+        onPageChange={setPage}
+        onPageSizeChange={setPageSize}
+        itemName="merek"
+      />
+
       <Dialog open={brandDialogOpen} onOpenChange={setBrandDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>
               {editingBrand ? "Edit Merek Kendaraan" : "Tambah Merek Kendaraan Baru"}
             </DialogTitle>
-            <DialogDescription className="text-xs">
+            <DialogDescription>
               Merek kendaraan yang dapat dipilih saat pembuatan SPPA dan placing slip.
             </DialogDescription>
           </DialogHeader>
 
           <div className="flex flex-col gap-3.5 py-2">
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="brand-name" className="text-xs font-medium">
+              <Label htmlFor="brand-name">
                 Nama Merek <span className="text-destructive">*</span>
               </Label>
               <Input
@@ -593,12 +597,11 @@ export function VehiclesTab({ initialBrands }: VehiclesTabProps) {
                 placeholder="Contoh: Toyota, Honda, Daihatsu"
                 value={brandName}
                 onChange={(e) => setBrandName(e.target.value)}
-                className="h-8.5 text-xs"
               />
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="brand-sort" className="text-xs font-medium">
+              <Label htmlFor="brand-sort">
                 Urutan Tampilan
               </Label>
               <Input
@@ -608,7 +611,6 @@ export function VehiclesTab({ initialBrands }: VehiclesTabProps) {
                 placeholder="0"
                 value={brandSortOrder}
                 onChange={(e) => setBrandSortOrder(e.target.value)}
-                className="h-8.5 text-xs"
               />
               <span className="text-[11px] text-muted-foreground">
                 Merek dengan urutan lebih kecil muncul lebih awal di dropdown.
@@ -616,7 +618,7 @@ export function VehiclesTab({ initialBrands }: VehiclesTabProps) {
             </div>
 
             <div className="flex items-center justify-between rounded-lg border p-2.5">
-              <span className="text-xs font-medium">Status Aktif Operasional</span>
+              <span className="text-sm font-medium">Status Aktif Operasional</span>
               <Switch
                 checked={brandIsActive}
                 onCheckedChange={setBrandIsActive}
@@ -631,7 +633,6 @@ export function VehiclesTab({ initialBrands }: VehiclesTabProps) {
               variant="outline"
               size="sm"
               onClick={() => setBrandDialogOpen(false)}
-              className="text-xs"
             >
               Batal
             </Button>
@@ -640,7 +641,6 @@ export function VehiclesTab({ initialBrands }: VehiclesTabProps) {
               size="sm"
               onClick={handleSaveBrand}
               disabled={isPending}
-              className="text-xs"
             >
               {editingBrand ? "Simpan Perubahan" : "Tambah Merek"}
             </Button>
@@ -656,14 +656,14 @@ export function VehiclesTab({ initialBrands }: VehiclesTabProps) {
                 ? `Edit Tipe (${parentBrand?.name ?? ""})`
                 : `Tambah Tipe Kendaraan (${parentBrand?.name ?? ""})`}
             </DialogTitle>
-            <DialogDescription className="text-xs">
+            <DialogDescription>
               Model/tipe kendaraan di bawah merek {parentBrand?.name ?? ""}.
             </DialogDescription>
           </DialogHeader>
 
           <div className="flex flex-col gap-3.5 py-2">
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="type-name" className="text-xs font-medium">
+              <Label htmlFor="type-name">
                 Nama Tipe <span className="text-destructive">*</span>
               </Label>
               <Input
@@ -671,12 +671,11 @@ export function VehiclesTab({ initialBrands }: VehiclesTabProps) {
                 placeholder="Contoh: Avanza, Innova Zenix, HR-V"
                 value={typeName}
                 onChange={(e) => setTypeName(e.target.value)}
-                className="h-8.5 text-xs"
               />
             </div>
 
             <div className="flex items-center justify-between rounded-lg border p-2.5">
-              <span className="text-xs font-medium">Status Aktif Operasional</span>
+              <span className="text-sm font-medium">Status Aktif Operasional</span>
               <Switch
                 checked={typeIsActive}
                 onCheckedChange={setTypeIsActive}
@@ -691,7 +690,6 @@ export function VehiclesTab({ initialBrands }: VehiclesTabProps) {
               variant="outline"
               size="sm"
               onClick={() => setTypeDialogOpen(false)}
-              className="text-xs"
             >
               Batal
             </Button>
@@ -700,7 +698,6 @@ export function VehiclesTab({ initialBrands }: VehiclesTabProps) {
               size="sm"
               onClick={handleSaveType}
               disabled={isPending}
-              className="text-xs"
             >
               {editingType ? "Simpan Perubahan" : "Tambah Tipe"}
             </Button>

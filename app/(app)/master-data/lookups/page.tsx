@@ -22,7 +22,10 @@ export default async function MasterDataLookupsPage() {
 
   return (
     <PageShell>
-      <PageHeader title="Nilai Pilihan Dropdown" />
+      <PageHeader
+        title="Nilai Pilihan Dropdown"
+        description="Pilihan pendek untuk dropdown di seluruh form. Entri sistem bisa diubah labelnya, tapi tidak bisa dihapus."
+      />
       <LookupValuesTab
         initialLookups={initialLookups}
         availableTypes={availableLookupTypes}

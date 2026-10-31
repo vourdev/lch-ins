@@ -174,7 +174,7 @@ export function NotificationPopover() {
               variant="ghost"
               size="sm"
               onClick={markAllRead}
-              className="h-7 gap-1 px-2 text-xs text-muted-foreground hover:text-foreground"
+              className="h-7 gap-1 px-2 text-muted-foreground hover:text-foreground"
             >
               <CheckCheck className="size-3.5" />
               Tandai dibaca

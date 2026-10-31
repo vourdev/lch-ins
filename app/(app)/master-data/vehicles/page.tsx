@@ -16,7 +16,10 @@ export default async function MasterDataVehiclesPage() {
 
   return (
     <PageShell>
-      <PageHeader title="Kendaraan" />
+      <PageHeader
+        title="Kendaraan"
+        description="Merek dan tipe kendaraan untuk SPPA dan placing slip kendaraan bermotor."
+      />
       <VehiclesTab initialBrands={initialVehicleBrands} />
     </PageShell>
   )

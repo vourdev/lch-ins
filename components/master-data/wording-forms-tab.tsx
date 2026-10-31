@@ -1,15 +1,22 @@
 "use client"
 
 import * as React from "react"
-import { Plus } from "lucide-react"
+import { Plus, Power } from "lucide-react"
 import { toast } from "sonner"
 
 import {
   createWordingFormAction,
   toggleWordingFormStatusAction,
 } from "@/app/(app)/master-data/actions"
+import {
+  ACTION_COL_CLASS,
+  RowActions,
+  type RowAction,
+} from "@/components/shared/row-actions"
 import { StatusBadge } from "@/components/shared/status-badge"
 import { TableEmpty } from "@/components/shared/table-empty"
+import { TablePagination, usePagination } from "@/components/shared/table-pagination"
+import { SearchInput } from "@/components/shared/table-toolbar"
 import { usePermission } from "@/components/auth/permission-provider"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
@@ -23,7 +30,6 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Switch } from "@/components/ui/switch"
 import {
   Table,
   TableBody,
@@ -42,6 +48,7 @@ export function WordingFormsTab({ initialWordingForms }: WordingFormsTabProps) {
   const permission = usePermission()
   const canManage = permission.canManage("/master-data")
   const [wordingForms, setWordingForms] = React.useState<WordingForm[]>(initialWordingForms)
+  const [search, setSearch] = React.useState("")
   const [isPending, startTransition] = React.useTransition()
 
   const [wordingDialogOpen, setWordingDialogOpen] = React.useState(false)
@@ -52,6 +59,21 @@ export function WordingFormsTab({ initialWordingForms }: WordingFormsTabProps) {
     setPrevWordingForms(initialWordingForms)
     setWordingForms(initialWordingForms)
   }
+
+  const filtered = React.useMemo(() => {
+    const q = search.trim().toLowerCase()
+    if (!q) return wordingForms
+    return wordingForms.filter((w) => w.name.toLowerCase().includes(q))
+  }, [wordingForms, search])
+
+  const {
+    page,
+    pageSize,
+    totalItems,
+    paginatedItems,
+    setPage,
+    setPageSize,
+  } = usePagination(filtered, 10)
 
   function handleSaveWording() {
     if (!wordingName.trim()) {
@@ -85,56 +107,71 @@ export function WordingFormsTab({ initialWordingForms }: WordingFormsTabProps) {
     })
   }
 
+  // Pola baris sama dengan Manajemen Pengguna: aksi di menu kolom pertama.
+  function actionsFor(w: WordingForm): RowAction[] {
+    return [
+      {
+        label: w.isActive ? "Nonaktifkan" : "Aktifkan",
+        icon: Power,
+        disabled: isPending,
+        onSelect: () => handleToggleWording(w.id, w.isActive),
+      },
+    ]
+  }
+
   return (
     <div className="flex flex-col gap-4">
-      {canManage && (
-        <div className="flex flex-wrap items-center justify-end gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <SearchInput
+          value={search}
+          onValueChange={setSearch}
+          placeholder="Cari nama wording form…"
+        />
+
+        {canManage && (
           <Button
-            size="sm"
             onClick={() => {
               setWordingName("")
               setWordingDialogOpen(true)
             }}
-            className="h-9 gap-1.5 text-xs"
           >
-            <Plus className="size-4" />
+            <Plus data-icon="inline-start" />
             Tambah Wording Form
           </Button>
-        </div>
-      )}
+        )}
+      </div>
 
       <Card className="gap-0 overflow-hidden py-0">
-        <Table className="min-w-200">
+        <Table className="min-w-160">
           <TableHeader>
             <TableRow className="hover:bg-transparent">
+              {canManage && <TableHead className={ACTION_COL_CLASS}>Aksi</TableHead>}
               <TableHead>Nama Wording Form Baku</TableHead>
-              <TableHead className="w-28">Status</TableHead>
-              {canManage && <TableHead className="w-24 text-right pr-4">Aksi</TableHead>}
+              <TableHead className="w-28 pr-4">Status</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {wordingForms.length === 0 ? (
-              <TableEmpty colSpan={canManage ? 3 : 2} message="Belum ada data wording form polis baku." />
+            {filtered.length === 0 ? (
+              <TableEmpty
+                colSpan={canManage ? 3 : 2}
+                message={
+                  search
+                    ? `Tidak ada wording form yang cocok dengan "${search}".`
+                    : "Belum ada data wording form polis baku."
+                }
+              />
             ) : (
-              wordingForms.map((w) => (
+              paginatedItems.map((w) => (
                 <TableRow key={w.id}>
-                  <TableCell className="font-medium text-foreground">{w.name}</TableCell>
-                  <TableCell>
-                    <StatusBadge status={w.isActive ? "Active" : "Inactive"} />
-                  </TableCell>
                   {canManage && (
-                    <TableCell className="text-right pr-4">
-                      <div className="flex items-center justify-end">
-                        <Switch
-                          checked={w.isActive}
-                          onCheckedChange={() => handleToggleWording(w.id, w.isActive)}
-                          disabled={isPending}
-                          className="scale-75"
-                          title={w.isActive ? "Nonaktifkan wording" : "Aktifkan wording"}
-                        />
-                      </div>
+                    <TableCell className={ACTION_COL_CLASS}>
+                      <RowActions actions={actionsFor(w)} />
                     </TableCell>
                   )}
+                  <TableCell className="font-medium text-foreground">{w.name}</TableCell>
+                  <TableCell className="pr-4">
+                    <StatusBadge status={w.isActive ? "Active" : "Inactive"} />
+                  </TableCell>
                 </TableRow>
               ))
             )}
@@ -142,19 +179,28 @@ export function WordingFormsTab({ initialWordingForms }: WordingFormsTabProps) {
         </Table>
       </Card>
 
+      <TablePagination
+        page={page}
+        pageSize={pageSize}
+        totalItems={totalItems}
+        onPageChange={setPage}
+        onPageSizeChange={setPageSize}
+        itemName="wording form"
+      />
+
       <Dialog open={wordingDialogOpen} onOpenChange={setWordingDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Tambah Wording Form Polis Baku</DialogTitle>
-            <DialogDescription className="text-xs">
+            <DialogDescription>
               Masukkan nama format baku polis asuransi (contoh: Polis Standar Asuransi Kendaraan
               Bermotor Indonesia / PSAKBI).
             </DialogDescription>
           </DialogHeader>
 
-          <div className="flex flex-col gap-3 py-2 text-xs">
+          <div className="flex flex-col gap-3 py-2">
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="wording-name" className="text-xs font-medium">
+              <Label htmlFor="wording-name">
                 Nama Wording Form <span className="text-destructive">*</span>
               </Label>
               <Input
@@ -162,7 +208,6 @@ export function WordingFormsTab({ initialWordingForms }: WordingFormsTabProps) {
                 placeholder="Contoh: PSAKI (Polis Standar Asuransi Kebakaran Indonesia)"
                 value={wordingName}
                 onChange={(e) => setWordingName(e.target.value)}
-                className="h-8.5 text-xs"
               />
             </div>
           </div>
@@ -173,7 +218,6 @@ export function WordingFormsTab({ initialWordingForms }: WordingFormsTabProps) {
               variant="outline"
               size="sm"
               onClick={() => setWordingDialogOpen(false)}
-              className="text-xs"
             >
               Batal
             </Button>
@@ -182,7 +226,6 @@ export function WordingFormsTab({ initialWordingForms }: WordingFormsTabProps) {
               size="sm"
               onClick={handleSaveWording}
               disabled={isPending}
-              className="text-xs"
             >
               Simpan Wording Form
             </Button>

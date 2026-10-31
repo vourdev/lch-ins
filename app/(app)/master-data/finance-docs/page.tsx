@@ -24,7 +24,10 @@ export default async function MasterDataFinanceDocsPage() {
 
   return (
     <PageShell>
-      <PageHeader title="Rekening & Mata Uang" />
+      <PageHeader
+        title="Rekening & Mata Uang"
+        description="Rekening bank LCH, termasuk rekening titipan premi, dan mata uang transaksi."
+      />
       <FinanceDocsTab
         initialBankAccounts={initialBankAccounts}
         initialCurrencies={initialCurrencies}

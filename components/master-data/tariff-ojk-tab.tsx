@@ -110,43 +110,32 @@ export function TariffOjkTab({
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Sub Tab Navigation */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <Tabs
-          value={activeSubTab}
-          onValueChange={(val) =>
-            setActiveSubTab(
-              val as "occupation" | "motor" | "earthquake" | "flood" | "biscale"
-            )
-          }
-        >
-          <TabsList className="h-9">
-            <TabsTrigger value="occupation" className="text-xs">
-              Okupasi & Properti (Lamp. I)
-            </TabsTrigger>
-            <TabsTrigger value="motor" className="text-xs">
-              Kendaraan Bermotor (Lamp. IV)
-            </TabsTrigger>
-            <TabsTrigger value="flood" className="text-xs">
-              Banjir (Lamp. II)
-            </TabsTrigger>
-            <TabsTrigger value="earthquake" className="text-xs">
-              Gempa Bumi (Lamp. III)
-            </TabsTrigger>
-            <TabsTrigger value="biscale" className="text-xs">
-              Skala BI
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
+      <Tabs
+        value={activeSubTab}
+        onValueChange={(val) =>
+          setActiveSubTab(
+            val as "occupation" | "motor" | "earthquake" | "flood" | "biscale"
+          )
+        }
+      >
+        <TabsList>
+          <TabsTrigger value="occupation">Okupasi & Properti (Lamp. I)</TabsTrigger>
+          <TabsTrigger value="motor">Kendaraan Bermotor (Lamp. IV)</TabsTrigger>
+          <TabsTrigger value="flood">Banjir (Lamp. II)</TabsTrigger>
+          <TabsTrigger value="earthquake">Gempa Bumi (Lamp. III)</TabsTrigger>
+          <TabsTrigger value="biscale">Skala BI</TabsTrigger>
+        </TabsList>
+      </Tabs>
 
-        {activeSubTab === "occupation" && (
+      {activeSubTab === "occupation" && (
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <SearchInput
             value={query}
             onValueChange={setQuery}
             placeholder="Cari kode atau nama okupasi OJK…"
           />
-        )}
-      </div>
+        </div>
+      )}
 
       {/* 1. Okupasi & Properti */}
       {activeSubTab === "occupation" && (

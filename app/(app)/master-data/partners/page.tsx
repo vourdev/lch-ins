@@ -19,7 +19,10 @@ export default async function MasterDataPartnersPage() {
 
   return (
     <PageShell>
-      <PageHeader title="Asuransi & Adjuster" />
+      <PageHeader
+        title="Asuransi & Adjuster"
+        description="Perusahaan asuransi rekanan dan loss adjuster."
+      />
       <InsurersAdjustersTab
         initialInsurers={initialInsurers}
         initialAdjusters={initialAdjusters}

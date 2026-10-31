@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Building2, Edit2, Info, Plus, UserCheck } from "lucide-react"
+import { Info, Pencil, Plus, Power } from "lucide-react"
 import { toast } from "sonner"
 
 import {
@@ -12,8 +12,14 @@ import {
   updateAdjusterAction,
   updateInsurerAction,
 } from "@/app/(app)/master-data/actions"
+import {
+  ACTION_COL_CLASS,
+  RowActions,
+  type RowAction,
+} from "@/components/shared/row-actions"
 import { StatusBadge } from "@/components/shared/status-badge"
 import { TableEmpty } from "@/components/shared/table-empty"
+import { TablePagination, usePagination } from "@/components/shared/table-pagination"
 import { SearchInput } from "@/components/shared/table-toolbar"
 import { usePermission } from "@/components/auth/permission-provider"
 import { Button } from "@/components/ui/button"
@@ -103,6 +109,16 @@ export function InsurersAdjustersTab({
         (a.phone && a.phone.toLowerCase().includes(q))
     )
   }, [adjusters, query])
+
+  const currentList = partnerType === "insurer" ? filteredInsurers : filteredAdjusters
+  const {
+    page,
+    pageSize,
+    totalItems,
+    paginatedItems,
+    setPage,
+    setPageSize,
+  } = usePagination<Insurer | Adjuster>(currentList, 10)
 
   function openAddDialog() {
     setEditingItem(null)
@@ -240,6 +256,21 @@ export function InsurersAdjustersTab({
     })
   }
 
+  function actionsFor(item: Insurer | Adjuster): RowAction[] {
+    return [
+      { label: "Edit data", icon: Pencil, onSelect: () => openEditDialog(item) },
+      {
+        label: item.isActive ? "Nonaktifkan" : "Aktifkan",
+        icon: Power,
+        disabled: isPending,
+        onSelect: () =>
+          partnerType === "insurer"
+            ? handleToggleInsurer(item.id, item.isActive)
+            : handleToggleAdjuster(item.id, item.isActive),
+      },
+    ]
+  }
+
   return (
     <div className="flex flex-col gap-4">
       {/* Informative Banner */}
@@ -254,51 +285,41 @@ export function InsurersAdjustersTab({
         </div>
       </div>
 
-      {/* Toolbar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-card p-3.5 shadow-xs">
-        <div className="flex flex-wrap items-center gap-3">
-          <Tabs
-            value={partnerType}
-            onValueChange={(val) => {
-              setPartnerType(val as "insurer" | "adjuster")
-              setQuery("")
-            }}
-          >
-            <TabsList className="h-9">
-              <TabsTrigger value="insurer" className="gap-1.5 text-xs">
-                <Building2 className="size-3.5" />
-                Asuransi Rekanan ({insurers.length})
-              </TabsTrigger>
-              <TabsTrigger value="adjuster" className="gap-1.5 text-xs">
-                <UserCheck className="size-3.5" />
-                Loss Adjuster ({adjusters.length})
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
+      <Tabs
+        value={partnerType}
+        onValueChange={(val) => {
+          setPartnerType(val as "insurer" | "adjuster")
+          setQuery("")
+        }}
+      >
+        <TabsList>
+          <TabsTrigger value="insurer">Asuransi Rekanan ({insurers.length})</TabsTrigger>
+          <TabsTrigger value="adjuster">Loss Adjuster ({adjusters.length})</TabsTrigger>
+        </TabsList>
+      </Tabs>
 
-          <SearchInput
-            value={query}
-            onValueChange={setQuery}
-            placeholder={`Cari nama, kontak, atau email ${
-              partnerType === "insurer" ? "asuransi" : "adjuster"
-            }…`}
-            className="w-full sm:max-w-xs"
-          />
-        </div>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <SearchInput
+          value={query}
+          onValueChange={setQuery}
+          placeholder={`Cari nama, kontak, atau email ${
+            partnerType === "insurer" ? "asuransi" : "adjuster"
+          }…`}
+        />
 
         {canManage && (
-          <Button size="sm" onClick={openAddDialog} className="h-9 gap-1.5 text-xs">
-            <Plus className="size-4" />
+          <Button onClick={openAddDialog}>
+            <Plus data-icon="inline-start" />
             {partnerType === "insurer" ? "Tambah Asuransi" : "Tambah Adjuster"}
           </Button>
         )}
       </div>
 
-      {/* Table */}
       <Card className="gap-0 overflow-hidden py-0">
         <Table className="min-w-200">
           <TableHeader>
             <TableRow className="hover:bg-transparent">
+              {canManage && <TableHead className={ACTION_COL_CLASS}>Aksi</TableHead>}
               <TableHead className="w-56">
                 Nama {partnerType === "insurer" ? "Perusahaan Asuransi" : "Loss Adjuster"}
               </TableHead>
@@ -306,12 +327,11 @@ export function InsurersAdjustersTab({
               <TableHead className="w-44">Email</TableHead>
               <TableHead className="w-36">Telepon</TableHead>
               <TableHead>Alamat Kantor</TableHead>
-              <TableHead className="w-24">Status</TableHead>
-              {canManage && <TableHead className="w-24 text-right pr-4">Aksi</TableHead>}
+              <TableHead className="w-24 pr-4">Status</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {(partnerType === "insurer" ? filteredInsurers : filteredAdjusters).length === 0 ? (
+            {currentList.length === 0 ? (
               <TableEmpty
                 colSpan={canManage ? 7 : 6}
                 message={
@@ -323,8 +343,13 @@ export function InsurersAdjustersTab({
                 }
               />
             ) : (
-              (partnerType === "insurer" ? filteredInsurers : filteredAdjusters).map((item) => (
+              paginatedItems.map((item) => (
                 <TableRow key={item.id}>
+                  {canManage && (
+                    <TableCell className={ACTION_COL_CLASS}>
+                      <RowActions actions={actionsFor(item)} />
+                    </TableCell>
+                  )}
                   <TableCell className="font-medium text-foreground">{item.name}</TableCell>
                   <TableCell>{item.contactPerson || "—"}</TableCell>
                   <TableCell className="font-mono text-muted-foreground">
@@ -336,41 +361,24 @@ export function InsurersAdjustersTab({
                   <TableCell className="text-muted-foreground truncate max-w-64">
                     {item.address || "—"}
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="pr-4">
                     <StatusBadge status={item.isActive ? "Active" : "Inactive"} />
                   </TableCell>
-                  {canManage && (
-                    <TableCell className="text-right pr-4">
-                      <div className="flex items-center justify-end gap-1.5">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => openEditDialog(item)}
-                          className="size-7 text-muted-foreground hover:text-foreground"
-                          title="Edit data rekanan"
-                        >
-                          <Edit2 className="size-3.5" />
-                        </Button>
-                        <Switch
-                          checked={item.isActive}
-                          onCheckedChange={() =>
-                            partnerType === "insurer"
-                              ? handleToggleInsurer(item.id, item.isActive)
-                              : handleToggleAdjuster(item.id, item.isActive)
-                          }
-                          disabled={isPending}
-                          className="scale-75"
-                          title={item.isActive ? "Nonaktifkan" : "Aktifkan"}
-                        />
-                      </div>
-                    </TableCell>
-                  )}
                 </TableRow>
               ))
             )}
           </TableBody>
         </Table>
       </Card>
+
+      <TablePagination
+        page={page}
+        pageSize={pageSize}
+        totalItems={totalItems}
+        onPageChange={setPage}
+        onPageSizeChange={setPageSize}
+        itemName={partnerType === "insurer" ? "asuransi" : "adjuster"}
+      />
 
       {/* Modal Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -381,14 +389,14 @@ export function InsurersAdjustersTab({
                 ? `Edit ${partnerType === "insurer" ? "Asuransi" : "Adjuster"}`
                 : `Tambah ${partnerType === "insurer" ? "Asuransi" : "Adjuster"} Baru`}
             </DialogTitle>
-            <DialogDescription className="text-xs">
+            <DialogDescription>
               Masukkan informasi rekanan {partnerType === "insurer" ? "penanggung risiko" : "penilai klaim"}.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="flex flex-col gap-3 py-2 text-xs">
+          <div className="flex flex-col gap-3 py-2">
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="partner-name" className="text-xs font-medium">
+              <Label htmlFor="partner-name">
                 Nama Perusahaan / Lembaga <span className="text-destructive">*</span>
               </Label>
               <Input
@@ -396,12 +404,11 @@ export function InsurersAdjustersTab({
                 placeholder="Contoh: PT Asuransi Wahana Tata, PT McLarens Indonesia"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="h-8.5 text-xs"
               />
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="partner-cp" className="text-xs font-medium">
+              <Label htmlFor="partner-cp">
                 Contact Person (PIC)
               </Label>
               <Input
@@ -409,13 +416,12 @@ export function InsurersAdjustersTab({
                 placeholder="Nama PIC operasional"
                 value={contactPerson}
                 onChange={(e) => setContactPerson(e.target.value)}
-                className="h-8.5 text-xs"
               />
             </div>
 
             <div className="grid grid-cols-2 gap-2.5">
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="partner-email" className="text-xs font-medium">
+                <Label htmlFor="partner-email">
                   Email
                 </Label>
                 <Input
@@ -424,12 +430,11 @@ export function InsurersAdjustersTab({
                   placeholder="kontak@rekanan.co.id"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="h-8.5 text-xs"
                 />
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="partner-phone" className="text-xs font-medium">
+                <Label htmlFor="partner-phone">
                   No. Telepon
                 </Label>
                 <Input
@@ -440,13 +445,12 @@ export function InsurersAdjustersTab({
                   onChange={(e) =>
                     setPhone(e.target.value.replace(/[^0-9+() -]/g, ""))
                   }
-                  className="h-8.5 text-xs"
                 />
               </div>
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="partner-address" className="text-xs font-medium">
+              <Label htmlFor="partner-address">
                 Alamat Kantor
               </Label>
               <Textarea
@@ -455,12 +459,11 @@ export function InsurersAdjustersTab({
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
                 rows={2}
-                className="text-xs"
               />
             </div>
 
             <div className="flex items-center justify-between rounded-lg border p-2.5">
-              <span className="text-xs font-medium">Status Aktif Operasional</span>
+              <span className="text-sm font-medium">Status Aktif Operasional</span>
               <Switch checked={isActive} onCheckedChange={setIsActive} />
             </div>
           </div>
@@ -471,7 +474,6 @@ export function InsurersAdjustersTab({
               variant="outline"
               size="sm"
               onClick={() => setDialogOpen(false)}
-              className="text-xs"
             >
               Batal
             </Button>
@@ -480,7 +482,6 @@ export function InsurersAdjustersTab({
               size="sm"
               onClick={handleSave}
               disabled={isPending}
-              className="text-xs"
             >
               {editingItem ? "Simpan Perubahan" : "Simpan Rekanan"}
             </Button>

@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Landmark, Plus, ShieldAlert } from "lucide-react"
+import { Pencil, Plus, Power, ShieldAlert } from "lucide-react"
 import { toast } from "sonner"
 
 import {
@@ -11,8 +11,15 @@ import {
   toggleCurrencyStatusAction,
   updateBankAccountAction,
 } from "@/app/(app)/master-data/actions"
+import {
+  ACTION_COL_CLASS,
+  RowActions,
+  type RowAction,
+} from "@/components/shared/row-actions"
 import { StatusBadge, ToneBadge } from "@/components/shared/status-badge"
 import { TableEmpty } from "@/components/shared/table-empty"
+import { TablePagination, usePagination } from "@/components/shared/table-pagination"
+import { SearchInput } from "@/components/shared/table-toolbar"
 import { usePermission } from "@/components/auth/permission-provider"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -63,6 +70,7 @@ export function FinanceDocsTab({
   const [subTab, setSubTab] = React.useState<"banks" | "currencies">("banks")
   const [bankAccounts, setBankAccounts] = React.useState<BankAccountRecord[]>(initialBankAccounts)
   const [currencies, setCurrencies] = React.useState<Currency[]>(initialCurrencies)
+  const [query, setQuery] = React.useState("")
   const [isPending, startTransition] = React.useTransition()
 
   // Modal Bank State
@@ -92,6 +100,27 @@ export function FinanceDocsTab({
     setBankAccounts(initialBankAccounts)
   }
 
+  const filteredBanks = React.useMemo(() => {
+    const q = query.trim().toLowerCase()
+    if (!q) return bankAccounts
+    return bankAccounts.filter((acc) =>
+      [acc.bank?.name ?? "", acc.accountNo, acc.accountName].some((v) =>
+        v.toLowerCase().includes(q)
+      )
+    )
+  }, [bankAccounts, query])
+
+  const filteredCurrencies = React.useMemo(() => {
+    const q = query.trim().toLowerCase()
+    if (!q) return currencies
+    return currencies.filter((c) =>
+      [c.code, c.name].some((v) => v.toLowerCase().includes(q))
+    )
+  }, [currencies, query])
+
+  const bankPaging = usePagination(filteredBanks, 10)
+  const currencyPaging = usePagination(filteredCurrencies, 10)
+
   function openAddBank() {
     setEditingBankAcc(null)
     setBankId(banks[0]?.id ?? "")
@@ -101,6 +130,25 @@ export function FinanceDocsTab({
     setIsPremiumTrust(false)
     setBankIsActive(true)
     setBankDialogOpen(true)
+  }
+
+  // Dialog sudah mendukung mode edit, tapi dulu tidak ada tombol yang
+  // membukanya. Sekarang dibuka dari menu aksi baris.
+  function openEditBank(acc: BankAccountRecord) {
+    setEditingBankAcc(acc)
+    setBankId(acc.bankId)
+    setAccountNo(acc.accountNo)
+    setAccountName(acc.accountName)
+    setCurrencyCode(acc.currencyCode)
+    setIsPremiumTrust(acc.isPremiumTrust)
+    setBankIsActive(acc.isActive)
+    setBankDialogOpen(true)
+  }
+
+  function openAddCurrency() {
+    setNewCurrencyCode("")
+    setNewCurrencyName("")
+    setCurrencyDialogOpen(true)
   }
 
   function handleSaveBank() {
@@ -218,153 +266,181 @@ export function FinanceDocsTab({
     })
   }
 
+  function bankActions(acc: BankAccountRecord): RowAction[] {
+    return [
+      { label: "Edit rekening", icon: Pencil, onSelect: () => openEditBank(acc) },
+      {
+        label: acc.isActive ? "Nonaktifkan" : "Aktifkan",
+        icon: Power,
+        disabled: isPending,
+        onSelect: () => handleToggleBank(acc.id, acc.isActive),
+      },
+    ]
+  }
+
+  function currencyActions(curr: Currency): RowAction[] {
+    return [
+      {
+        label: curr.isActive ? "Nonaktifkan" : "Aktifkan",
+        icon: Power,
+        disabled: isPending,
+        onSelect: () => handleToggleCurrency(curr.code, curr.isActive),
+      },
+    ]
+  }
+
   return (
     <div className="flex flex-col gap-4">
-      {/* Sub Tabs */}
+      <Tabs
+        value={subTab}
+        onValueChange={(val) => setSubTab(val as "banks" | "currencies")}
+      >
+        <TabsList>
+          <TabsTrigger value="banks">Rekening Bank LCH ({bankAccounts.length})</TabsTrigger>
+          <TabsTrigger value="currencies">Mata Uang ({currencies.length})</TabsTrigger>
+        </TabsList>
+      </Tabs>
+
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <Tabs
-          value={subTab}
-          onValueChange={(val) => setSubTab(val as "banks" | "currencies")}
-        >
-          <TabsList className="h-9">
-            <TabsTrigger value="banks" className="gap-1.5 text-xs">
-              <Landmark className="size-3.5" />
-              Rekening Bank LCH ({bankAccounts.length})
-            </TabsTrigger>
-            <TabsTrigger value="currencies" className="text-xs">
-              Mata Uang ({currencies.length})
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
+        <SearchInput
+          value={query}
+          onValueChange={setQuery}
+          placeholder={
+            subTab === "banks" ? "Cari bank, nomor, atau nama rekening…" : "Cari kode atau nama mata uang…"
+          }
+        />
 
-        {subTab === "banks" && canManage && (
-          <Button size="sm" onClick={openAddBank} className="h-9 gap-1.5 text-xs">
-            <Plus className="size-4" />
-            Tambah Rekening Bank
-          </Button>
-        )}
-
-        {subTab === "currencies" && canManage && (
-          <Button
-            size="sm"
-            onClick={() => {
-              setNewCurrencyCode("")
-              setNewCurrencyName("")
-              setCurrencyDialogOpen(true)
-            }}
-            className="h-9 gap-1.5 text-xs"
-          >
-            <Plus className="size-4" />
-            Tambah Mata Uang
+        {canManage && (
+          <Button onClick={subTab === "banks" ? openAddBank : openAddCurrency}>
+            <Plus data-icon="inline-start" />
+            {subTab === "banks" ? "Tambah Rekening Bank" : "Tambah Mata Uang"}
           </Button>
         )}
       </div>
 
-      {/* 1. Rekening Bank */}
       {subTab === "banks" && (
-        <Card className="gap-0 overflow-hidden py-0">
-          <Table className="min-w-200">
-            <TableHeader>
-              <TableRow className="hover:bg-transparent">
-                <TableHead className="w-36">Bank</TableHead>
-                <TableHead className="w-48">Nomor Rekening</TableHead>
-                <TableHead>Nama Pemilik Rekening</TableHead>
-                <TableHead className="w-24">Valuta</TableHead>
-                <TableHead className="w-44">Tipe Rekening</TableHead>
-                <TableHead className="w-24">Status</TableHead>
-                {canManage && <TableHead className="w-24 text-right pr-4">Aksi</TableHead>}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {bankAccounts.length === 0 ? (
-                <TableEmpty colSpan={canManage ? 7 : 6} message="Belum ada data rekening bank operasional." />
-              ) : (
-                bankAccounts.map((acc) => (
-                  <TableRow key={acc.id}>
-                    <TableCell className="font-medium text-foreground">
-                      {acc.bank?.name ?? "Bank"}
-                    </TableCell>
-                    <TableCell className="font-mono font-semibold text-foreground">
-                      {acc.accountNo}
-                    </TableCell>
-                    <TableCell>{acc.accountName}</TableCell>
-                    <TableCell className="font-mono">{acc.currencyCode}</TableCell>
-                    <TableCell>
-                      {acc.isPremiumTrust ? (
-                        <ToneBadge tone="warning">
-                          <ShieldAlert className="size-3" />
-                          Titipan Premi
-                        </ToneBadge>
-                      ) : (
-                        <Badge variant="outline" className="text-muted-foreground">
-                          Operasional
-                        </Badge>
+        <>
+          <Card className="gap-0 overflow-hidden py-0">
+            <Table className="min-w-200">
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  {canManage && <TableHead className={ACTION_COL_CLASS}>Aksi</TableHead>}
+                  <TableHead className="w-36">Bank</TableHead>
+                  <TableHead className="w-48">Nomor Rekening</TableHead>
+                  <TableHead>Nama Pemilik Rekening</TableHead>
+                  <TableHead className="w-24">Valuta</TableHead>
+                  <TableHead className="w-44">Tipe Rekening</TableHead>
+                  <TableHead className="w-24 pr-4">Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredBanks.length === 0 ? (
+                  <TableEmpty
+                    colSpan={canManage ? 7 : 6}
+                    message={
+                      query
+                        ? "Tidak ada rekening yang cocok dengan pencarian."
+                        : "Belum ada data rekening bank operasional."
+                    }
+                  />
+                ) : (
+                  bankPaging.paginatedItems.map((acc) => (
+                    <TableRow key={acc.id}>
+                      {canManage && (
+                        <TableCell className={ACTION_COL_CLASS}>
+                          <RowActions actions={bankActions(acc)} />
+                        </TableCell>
                       )}
-                    </TableCell>
-                    <TableCell>
-                      <StatusBadge status={acc.isActive ? "Active" : "Inactive"} />
-                    </TableCell>
-                    {canManage && (
-                      <TableCell className="text-right pr-4">
-                        <div className="flex items-center justify-end gap-1.5">
-                          <Switch
-                            checked={acc.isActive}
-                            onCheckedChange={() => handleToggleBank(acc.id, acc.isActive)}
-                            disabled={isPending}
-                            className="scale-75"
-                            title={acc.isActive ? "Nonaktifkan rekening" : "Aktifkan rekening"}
-                          />
-                        </div>
+                      <TableCell className="font-medium text-foreground">
+                        {acc.bank?.name ?? "Bank"}
                       </TableCell>
-                    )}
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </Card>
+                      <TableCell className="font-mono font-semibold text-foreground">
+                        {acc.accountNo}
+                      </TableCell>
+                      <TableCell>{acc.accountName}</TableCell>
+                      <TableCell className="font-mono">{acc.currencyCode}</TableCell>
+                      <TableCell>
+                        {acc.isPremiumTrust ? (
+                          <ToneBadge tone="warning">
+                            <ShieldAlert className="size-3" />
+                            Titipan Premi
+                          </ToneBadge>
+                        ) : (
+                          <Badge variant="outline" className="text-muted-foreground">
+                            Operasional
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="pr-4">
+                        <StatusBadge status={acc.isActive ? "Active" : "Inactive"} />
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </Card>
+
+          <TablePagination
+            page={bankPaging.page}
+            pageSize={bankPaging.pageSize}
+            totalItems={bankPaging.totalItems}
+            onPageChange={bankPaging.setPage}
+            onPageSizeChange={bankPaging.setPageSize}
+            itemName="rekening"
+          />
+        </>
       )}
 
-      {/* 2. Mata Uang */}
       {subTab === "currencies" && (
-        <Card className="gap-0 overflow-hidden py-0">
-          <Table className="min-w-200">
-            <TableHeader>
-              <TableRow className="hover:bg-transparent">
-                <TableHead className="w-28">Kode ISO</TableHead>
-                <TableHead>Nama Mata Uang</TableHead>
-                <TableHead className="w-28">Status</TableHead>
-                {canManage && <TableHead className="w-24 text-right pr-4">Aksi</TableHead>}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {currencies.map((curr) => (
-                <TableRow key={curr.code}>
-                  <TableCell className="font-mono font-semibold text-foreground">
-                    {curr.code}
-                  </TableCell>
-                  <TableCell className="font-medium text-foreground">{curr.name}</TableCell>
-                  <TableCell>
-                    <StatusBadge status={curr.isActive ? "Active" : "Inactive"} />
-                  </TableCell>
-                  {canManage && (
-                    <TableCell className="text-right pr-4">
-                      <div className="flex items-center justify-end">
-                        <Switch
-                          checked={curr.isActive}
-                          onCheckedChange={() => handleToggleCurrency(curr.code, curr.isActive)}
-                          disabled={isPending}
-                          className="scale-75"
-                          title={curr.isActive ? `Nonaktifkan ${curr.code}` : `Aktifkan ${curr.code}`}
-                        />
-                      </div>
-                    </TableCell>
-                  )}
+        <>
+          <Card className="gap-0 overflow-hidden py-0">
+            <Table className="min-w-160">
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  {canManage && <TableHead className={ACTION_COL_CLASS}>Aksi</TableHead>}
+                  <TableHead className="w-28">Kode ISO</TableHead>
+                  <TableHead>Nama Mata Uang</TableHead>
+                  <TableHead className="w-28 pr-4">Status</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </Card>
+              </TableHeader>
+              <TableBody>
+                {filteredCurrencies.length === 0 ? (
+                  <TableEmpty
+                    colSpan={canManage ? 4 : 3}
+                    message="Tidak ada mata uang yang cocok dengan pencarian."
+                  />
+                ) : (
+                  currencyPaging.paginatedItems.map((curr) => (
+                    <TableRow key={curr.code}>
+                      {canManage && (
+                        <TableCell className={ACTION_COL_CLASS}>
+                          <RowActions actions={currencyActions(curr)} />
+                        </TableCell>
+                      )}
+                      <TableCell className="font-mono font-semibold text-foreground">
+                        {curr.code}
+                      </TableCell>
+                      <TableCell className="font-medium text-foreground">{curr.name}</TableCell>
+                      <TableCell className="pr-4">
+                        <StatusBadge status={curr.isActive ? "Active" : "Inactive"} />
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </Card>
+
+          <TablePagination
+            page={currencyPaging.page}
+            pageSize={currencyPaging.pageSize}
+            totalItems={currencyPaging.totalItems}
+            onPageChange={currencyPaging.setPage}
+            onPageSizeChange={currencyPaging.setPageSize}
+            itemName="mata uang"
+          />
+        </>
       )}
 
       {/* Dialog Bank Account */}
@@ -374,14 +450,14 @@ export function FinanceDocsTab({
             <DialogTitle>
               {editingBankAcc ? "Edit Rekening Bank" : "Tambah Rekening Bank"}
             </DialogTitle>
-            <DialogDescription className="text-xs">
+            <DialogDescription>
               Rekening bank operasional LCH untuk penerimaan premi atau transaksi bisnis.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="flex flex-col gap-3 py-2 text-xs">
+          <div className="flex flex-col gap-3 py-2">
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="bank-select" className="text-xs font-medium">
+              <Label htmlFor="bank-select">
                 Pilih Bank <span className="text-destructive">*</span>
               </Label>
               <Select
@@ -389,12 +465,12 @@ export function FinanceDocsTab({
                 value={bankId}
                 onValueChange={(val) => setBankId(val ?? "")}
               >
-                <SelectTrigger id="bank-select" className="h-8.5 text-xs">
+                <SelectTrigger id="bank-select" className="w-full">
                   <SelectValue placeholder="Pilih bank" />
                 </SelectTrigger>
                 <SelectContent>
                   {banks.map((b) => (
-                    <SelectItem key={b.id} value={b.id} className="text-xs">
+                    <SelectItem key={b.id} value={b.id}>
                       {b.name}
                     </SelectItem>
                   ))}
@@ -403,7 +479,7 @@ export function FinanceDocsTab({
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="acc-no" className="text-xs font-medium">
+              <Label htmlFor="acc-no">
                 Nomor Rekening <span className="text-destructive">*</span>
               </Label>
               <Input
@@ -415,12 +491,12 @@ export function FinanceDocsTab({
                 onChange={(e) =>
                   setAccountNo(e.target.value.replace(/[^0-9-]/g, ""))
                 }
-                className="h-8.5 font-mono text-xs"
+                className="font-mono"
               />
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="acc-name" className="text-xs font-medium">
+              <Label htmlFor="acc-name">
                 Nama Pemilik Rekening <span className="text-destructive">*</span>
               </Label>
               <Input
@@ -428,23 +504,22 @@ export function FinanceDocsTab({
                 placeholder="PT LCH Insurance Brokers"
                 value={accountName}
                 onChange={(e) => setAccountName(e.target.value)}
-                className="h-8.5 text-xs"
               />
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="acc-curr" className="text-xs font-medium">
+              <Label htmlFor="acc-curr">
                 Mata Uang <span className="text-destructive">*</span>
               </Label>
               <Select value={currencyCode} onValueChange={(val) => setCurrencyCode(val ?? "IDR")}>
-                <SelectTrigger id="acc-curr" className="h-8.5 text-xs">
+                <SelectTrigger id="acc-curr" className="w-full">
                   <SelectValue placeholder="Pilih valuta" />
                 </SelectTrigger>
                 <SelectContent>
                   {currencies
                     .filter((c) => c.isActive || c.code === currencyCode)
                     .map((c) => (
-                    <SelectItem key={c.code} value={c.code} className="text-xs">
+                    <SelectItem key={c.code} value={c.code}>
                       {c.code} — {c.name}
                     </SelectItem>
                   ))}
@@ -454,7 +529,7 @@ export function FinanceDocsTab({
 
             <div className="flex items-center justify-between rounded-lg border p-2.5">
               <div className="flex flex-col">
-                <span className="text-xs font-medium">Rekening Titipan Premi</span>
+                <span className="text-sm font-medium">Rekening Titipan Premi</span>
                 <span className="text-[11px] text-muted-foreground">
                   Pisahkan rekening dana premi nasabah dari rekening operasional
                 </span>
@@ -463,7 +538,7 @@ export function FinanceDocsTab({
             </div>
 
             <div className="flex items-center justify-between rounded-lg border p-2.5">
-              <span className="text-xs font-medium">Status Aktif</span>
+              <span className="text-sm font-medium">Status Aktif</span>
               <Switch checked={bankIsActive} onCheckedChange={setBankIsActive} />
             </div>
           </div>
@@ -474,7 +549,6 @@ export function FinanceDocsTab({
               variant="outline"
               size="sm"
               onClick={() => setBankDialogOpen(false)}
-              className="text-xs"
             >
               Batal
             </Button>
@@ -483,7 +557,6 @@ export function FinanceDocsTab({
               size="sm"
               onClick={handleSaveBank}
               disabled={isPending}
-              className="text-xs"
             >
               {editingBankAcc ? "Simpan Perubahan" : "Simpan Rekening"}
             </Button>
@@ -496,15 +569,15 @@ export function FinanceDocsTab({
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Tambah Mata Uang</DialogTitle>
-            <DialogDescription className="text-xs">
+            <DialogDescription>
               Kode ISO 4217 tiga huruf menjadi kunci dan tidak bisa diubah.
               Mata uang yang tidak dipakai lagi cukup dinonaktifkan.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="flex flex-col gap-3 py-2 text-xs">
+          <div className="flex flex-col gap-3 py-2">
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="currency-code" className="text-xs font-medium">
+              <Label htmlFor="currency-code">
                 Kode ISO <span className="text-destructive">*</span>
               </Label>
               <Input
@@ -513,11 +586,11 @@ export function FinanceDocsTab({
                 value={newCurrencyCode}
                 onChange={(e) => setNewCurrencyCode(e.target.value.toUpperCase())}
                 maxLength={3}
-                className="h-8.5 font-mono text-xs"
+                className="font-mono"
               />
             </div>
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="currency-name" className="text-xs font-medium">
+              <Label htmlFor="currency-name">
                 Nama Mata Uang <span className="text-destructive">*</span>
               </Label>
               <Input
@@ -525,7 +598,6 @@ export function FinanceDocsTab({
                 placeholder="Contoh: Japanese Yen"
                 value={newCurrencyName}
                 onChange={(e) => setNewCurrencyName(e.target.value)}
-                className="h-8.5 text-xs"
               />
             </div>
           </div>
@@ -536,7 +608,6 @@ export function FinanceDocsTab({
               variant="outline"
               size="sm"
               onClick={() => setCurrencyDialogOpen(false)}
-              className="text-xs"
             >
               Batal
             </Button>
@@ -545,7 +616,6 @@ export function FinanceDocsTab({
               size="sm"
               onClick={handleSaveCurrency}
               disabled={isPending}
-              className="text-xs"
             >
               Simpan Mata Uang
             </Button>

@@ -1,15 +1,22 @@
 "use client"
 
 import * as React from "react"
-import { Pencil, Plus, Search } from "lucide-react"
+import { Pencil, Plus, Power } from "lucide-react"
 import { toast } from "sonner"
 
 import {
   createCobOjkClassAction,
   updateCobOjkClassAction,
 } from "@/app/(app)/master-data/actions"
+import {
+  ACTION_COL_CLASS,
+  RowActions,
+  type RowAction,
+} from "@/components/shared/row-actions"
 import { StatusBadge } from "@/components/shared/status-badge"
 import { TableEmpty } from "@/components/shared/table-empty"
+import { TablePagination, usePagination } from "@/components/shared/table-pagination"
+import { SearchInput } from "@/components/shared/table-toolbar"
 import { usePermission } from "@/components/auth/permission-provider"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -62,6 +69,15 @@ export function CobOjkClassesTab({ initialCobOjkClasses }: CobOjkClassesTabProps
     if (!q) return items
     return items.filter((it) => it.name.toLowerCase().includes(q))
   }, [items, search])
+
+  const {
+    page,
+    pageSize,
+    totalItems,
+    paginatedItems,
+    setPage,
+    setPageSize,
+  } = usePagination(filtered, 10)
 
   function openAdd() {
     setEditingItem(null)
@@ -119,46 +135,51 @@ export function CobOjkClassesTab({ initialCobOjkClasses }: CobOjkClassesTabProps
     })
   }
 
+  // Pola baris sama dengan Manajemen Pengguna: aksi di menu kolom pertama,
+  // termasuk aktif/nonaktif yang dulu berupa switch di kolom sendiri.
+  function actionsFor(item: CobOjkClassRecord): RowAction[] {
+    return [
+      { label: "Edit klasifikasi", icon: Pencil, onSelect: () => openEdit(item) },
+      {
+        label: item.isActive ? "Nonaktifkan" : "Aktifkan",
+        icon: Power,
+        disabled: isPending,
+        onSelect: () => handleToggle(item),
+      },
+    ]
+  }
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="relative w-full max-w-xs">
-          <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Cari klasifikasi OJK..."
-            className="h-8.5 pl-8 text-xs"
-          />
-        </div>
+        <SearchInput
+          value={search}
+          onValueChange={setSearch}
+          placeholder="Cari klasifikasi OJK…"
+        />
 
         {canManage && (
-          <Button onClick={openAdd} size="sm" className="h-8.5 gap-1.5 text-xs">
-            <Plus className="size-3.5" />
+          <Button onClick={openAdd}>
+            <Plus data-icon="inline-start" />
             Tambah Klasifikasi OJK
           </Button>
         )}
       </div>
 
-      <Card className="overflow-hidden">
+      <Card className="gap-0 overflow-hidden py-0">
         <Table className="min-w-160">
           <TableHeader>
-            <TableRow>
+            <TableRow className="hover:bg-transparent">
+              {canManage && <TableHead className={ACTION_COL_CLASS}>Aksi</TableHead>}
               <TableHead>Nama Klasifikasi OJK</TableHead>
-              <TableHead className="w-36 text-center">Polis Terkait</TableHead>
-              <TableHead className="w-28">Status</TableHead>
-              {canManage && (
-                <>
-                  <TableHead className="w-20 text-center">Aktif</TableHead>
-                  <TableHead className="w-20 text-right pr-4">Aksi</TableHead>
-                </>
-              )}
+              <TableHead className="w-36">Polis Terkait</TableHead>
+              <TableHead className="w-28 pr-4">Status</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filtered.length === 0 ? (
               <TableEmpty
-                colSpan={canManage ? 5 : 3}
+                colSpan={canManage ? 4 : 3}
                 message={
                   search
                     ? `Tidak ada klasifikasi OJK yang cocok dengan "${search}".`
@@ -166,42 +187,22 @@ export function CobOjkClassesTab({ initialCobOjkClasses }: CobOjkClassesTabProps
                 }
               />
             ) : (
-              filtered.map((item) => (
+              paginatedItems.map((item) => (
                 <TableRow key={item.id}>
+                  {canManage && (
+                    <TableCell className={ACTION_COL_CLASS}>
+                      <RowActions actions={actionsFor(item)} />
+                    </TableCell>
+                  )}
                   <TableCell className="font-medium text-foreground">{item.name}</TableCell>
-                  <TableCell className="text-center">
+                  <TableCell>
                     <Badge variant="outline" className="font-normal">
                       {item._count.policies} polis
                     </Badge>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="pr-4">
                     <StatusBadge status={item.isActive ? "Active" : "Inactive"} />
                   </TableCell>
-                  {canManage && (
-                    <>
-                      <TableCell className="text-center">
-                        <Switch
-                          checked={item.isActive}
-                          onCheckedChange={() => handleToggle(item)}
-                          disabled={isPending}
-                          className="scale-75"
-                          title={item.isActive ? "Nonaktifkan klasifikasi" : "Aktifkan klasifikasi"}
-                        />
-                      </TableCell>
-                      <TableCell className="text-right pr-4">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => openEdit(item)}
-                          className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
-                          title="Edit klasifikasi OJK"
-                        >
-                          <Pencil className="size-3.5" />
-                          <span className="sr-only">Edit {item.name}</span>
-                        </Button>
-                      </TableCell>
-                    </>
-                  )}
                 </TableRow>
               ))
             )}
@@ -209,20 +210,29 @@ export function CobOjkClassesTab({ initialCobOjkClasses }: CobOjkClassesTabProps
         </Table>
       </Card>
 
+      <TablePagination
+        page={page}
+        pageSize={pageSize}
+        totalItems={totalItems}
+        onPageChange={setPage}
+        onPageSizeChange={setPageSize}
+        itemName="klasifikasi"
+      />
+
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>
               {editingItem ? "Edit Klasifikasi OJK" : "Tambah Klasifikasi OJK"}
             </DialogTitle>
-            <DialogDescription className="text-xs">
+            <DialogDescription>
               Klasifikasi lini usaha menurut OJK untuk pengelompokan pelaporan produksi dan polis.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="flex flex-col gap-3 py-2 text-xs">
+          <div className="flex flex-col gap-3 py-2">
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="ojk-name" className="text-xs font-medium">
+              <Label htmlFor="ojk-name">
                 Nama Klasifikasi <span className="text-destructive">*</span>
               </Label>
               <Input
@@ -230,14 +240,13 @@ export function CobOjkClassesTab({ initialCobOjkClasses }: CobOjkClassesTabProps
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Contoh: Rangka Kapal, Harta Benda, Kendaraan Bermotor"
-                className="h-8.5 text-xs"
               />
             </div>
 
             <div className="flex items-center justify-between rounded-md border p-2.5">
               <div className="flex flex-col gap-0.5">
-                <span className="text-xs font-medium text-foreground">Status Aktif</span>
-                <span className="text-2xs text-muted-foreground">
+                <span className="text-sm font-medium text-foreground">Status Aktif</span>
+                <span className="text-xs text-muted-foreground">
                   Menentukan apakah opsi ini muncul di dropdown form polis
                 </span>
               </div>
@@ -245,13 +254,12 @@ export function CobOjkClassesTab({ initialCobOjkClasses }: CobOjkClassesTabProps
             </div>
           </div>
 
-          <DialogFooter className="gap-2 sm:gap-0">
+          <DialogFooter>
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={() => setDialogOpen(false)}
-              className="h-8.5 text-xs"
             >
               Batal
             </Button>
@@ -260,7 +268,6 @@ export function CobOjkClassesTab({ initialCobOjkClasses }: CobOjkClassesTabProps
               size="sm"
               onClick={handleSave}
               disabled={isPending}
-              className="h-8.5 text-xs"
             >
               {isPending ? "Menyimpan..." : "Simpan"}
             </Button>

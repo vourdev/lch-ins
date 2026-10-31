@@ -27,7 +27,10 @@ export default async function MasterDataTariffOjkPage() {
 
   return (
     <PageShell>
-      <PageHeader title="Tarif Baku OJK" />
+      <PageHeader
+        title="Tarif Baku OJK"
+        description="Batas tarif dari ketentuan OJK, dipakai sebagai acuan rate di placing slip."
+      />
       <TariffOjkTab
         initialOccupations={initialOccupations}
         tariffEqProperty={tariffEqProperty}

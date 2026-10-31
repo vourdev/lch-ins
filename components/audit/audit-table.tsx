@@ -161,7 +161,7 @@ export function AuditTable({
                 variant="ghost"
                 size="sm"
                 onClick={resetFilters}
-                className="h-9 px-2.5 text-xs text-muted-foreground hover:text-foreground"
+                className="px-2.5 text-muted-foreground hover:text-foreground"
               >
                 <RotateCcw className="size-3.5 mr-1" />
                 Reset Filter
@@ -322,7 +322,7 @@ export function AuditTable({
                         variant="ghost"
                         size="sm"
                         onClick={() => setSelectedLog(log)}
-                        className="h-7 px-2 text-xs text-primary hover:text-primary hover:bg-primary/10"
+                        className="h-7 px-2 text-primary hover:text-primary hover:bg-primary/10"
                       >
                         <Eye className="size-3.5 mr-1" />
                         Detail

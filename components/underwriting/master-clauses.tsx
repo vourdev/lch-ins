@@ -3,21 +3,21 @@
 import * as React from "react"
 import Link from "next/link"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
-import { BookOpenText, Eye, Pencil, Plus } from "lucide-react"
+import { Eye, Pencil, Plus } from "lucide-react"
 
 import { usePermission } from "@/components/auth/permission-provider"
 import { PageHeader } from "@/components/layout/page-header"
+import {
+  ACTION_COL_CLASS,
+  RowActions,
+  type RowAction,
+} from "@/components/shared/row-actions"
+import { TableEmpty } from "@/components/shared/table-empty"
+import { TablePagination } from "@/components/shared/table-pagination"
 import { SearchInput } from "@/components/shared/table-toolbar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import {
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from "@/components/ui/empty"
 import {
   Select,
   SelectContent,
@@ -26,6 +26,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 import { wordingText } from "@/lib/data"
 import type { ClauseListItem } from "@/lib/server/clauses"
 
@@ -36,6 +44,7 @@ export interface MasterClausesProps {
     items: ClauseListItem[]
     total: number
     page: number
+    pageSize: number
     pageCount: number
   }
   groups: string[]
@@ -90,175 +99,138 @@ export function MasterClauses({
     ...cobs.map((c) => ({ label: c.name, value: c.id })),
   ]
 
-  const showing = result.items.length
+  function actionsFor(c: ClauseListItem): RowAction[] {
+    const href = `/underwriting/master-clauses/${c.id}`
+    return [
+      canManageEffective
+        ? { label: "Edit clause", icon: Pencil, render: <Link href={href} /> }
+        : { label: "Lihat detail", icon: Eye, render: <Link href={href} /> },
+    ]
+  }
 
   return (
     <>
       <PageHeader
         title="Master Clauses"
         description="Pustaka klausula LCH, dipakai saat menyusun placing slip"
-        actions={
-          canManageEffective ? (
-            <Button
-              render={<Link href="/underwriting/master-clauses/new" />}
-              nativeButton={false}
-            >
-              <Plus data-icon="inline-start" />
-              Tambah Clause
-            </Button>
-          ) : null
-        }
       />
 
-      <Card className="flex-row flex-wrap items-center gap-3 px-5 py-4">
-        <SearchInput
-          value={query}
-          onValueChange={setQuery}
-          placeholder="Cari judul atau isi wording…"
-        />
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <SearchInput
+            value={query}
+            onValueChange={setQuery}
+            placeholder="Cari judul atau isi wording…"
+          />
 
-        <Select
-          items={groupItems}
-          value={filter.sourceGroup || ALL}
-          onValueChange={(v) => push({ group: v === ALL ? "" : (v as string) })}
-        >
-          <SelectTrigger size="sm" className="w-[170px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectGroup>
-              {groupItems.map((i) => (
-                <SelectItem key={i.value} value={i.value}>
-                  {i.label}
-                </SelectItem>
-              ))}
-            </SelectGroup>
-          </SelectContent>
-        </Select>
+          <Select
+            items={groupItems}
+            value={filter.sourceGroup || ALL}
+            onValueChange={(v) => push({ group: v === ALL ? "" : (v as string) })}
+          >
+            <SelectTrigger size="sm" className="w-[170px]" aria-label="Filter kelompok">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                {groupItems.map((i) => (
+                  <SelectItem key={i.value} value={i.value}>
+                    {i.label}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
 
-        <Select
-          items={cobItems}
-          value={filter.cobId || ALL}
-          onValueChange={(v) => push({ cob: v === ALL ? "" : (v as string) })}
-        >
-          <SelectTrigger size="sm" className="w-[190px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectGroup>
-              {cobItems.map((i) => (
-                <SelectItem key={i.value} value={i.value}>
-                  {i.label}
-                </SelectItem>
-              ))}
-            </SelectGroup>
-          </SelectContent>
-        </Select>
+          <Select
+            items={cobItems}
+            value={filter.cobId || ALL}
+            onValueChange={(v) => push({ cob: v === ALL ? "" : (v as string) })}
+          >
+            <SelectTrigger size="sm" className="w-[190px]" aria-label="Filter class of business">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                {cobItems.map((i) => (
+                  <SelectItem key={i.value} value={i.value}>
+                    {i.label}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+        </div>
 
-        <span className="ml-auto text-sm text-muted-foreground">
-          {result.total === 0
-            ? "Tidak ada clause"
-            : `${showing} dari ${result.total} clause`}
-        </span>
-      </Card>
+        {canManageEffective ? (
+          <Button
+            render={<Link href="/underwriting/master-clauses/new" />}
+            nativeButton={false}
+          >
+            <Plus data-icon="inline-start" />
+            Tambah Clause
+          </Button>
+        ) : null}
+      </div>
 
-      {result.items.length === 0 ? (
-        <Empty>
-          <EmptyHeader>
-            <EmptyMedia variant="icon">
-              <BookOpenText />
-            </EmptyMedia>
-            <EmptyTitle>Tidak ada clause</EmptyTitle>
-            <EmptyDescription>
-              Ubah kata kunci atau filter di atas.
-            </EmptyDescription>
-          </EmptyHeader>
-        </Empty>
-      ) : (
-        <div className="flex flex-col gap-3">
-          {result.items.map((c) => (
-            <Card key={c.id} className="gap-2 px-5 py-4">
-              <div className="flex items-start justify-between gap-4">
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="text-sm font-bold">{c.title}</h3>
+      <Card className="gap-0 overflow-hidden py-0">
+        <Table className="min-w-200">
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <TableHead className={ACTION_COL_CLASS}>Aksi</TableHead>
+              <TableHead>Clause</TableHead>
+              <TableHead className="w-40">Kelompok</TableHead>
+              <TableHead className="w-44">Class of Business</TableHead>
+              <TableHead className="w-56 pr-4">Type of Cover</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {result.items.length === 0 ? (
+              <TableEmpty
+                colSpan={5}
+                message="Tidak ada clause. Ubah kata kunci atau filter di atas."
+              />
+            ) : (
+              result.items.map((c) => (
+                <TableRow key={c.id}>
+                  <TableCell className={ACTION_COL_CLASS}>
+                    <RowActions actions={actionsFor(c)} />
+                  </TableCell>
+                  <TableCell className="max-w-120 whitespace-normal">
+                    <p className="font-medium">{c.title}</p>
+                    <p className="line-clamp-2 text-xs text-muted-foreground">
+                      {wordingText(c.wordingHtml)}
+                    </p>
+                  </TableCell>
+                  <TableCell>
                     {c.sourceGroup ? (
                       <Badge variant="secondary">{c.sourceGroup}</Badge>
-                    ) : null}
-                    {c.cobName ? (
-                      <Badge variant="outline">{c.cobName}</Badge>
-                    ) : null}
-                    {c.coverTypeName ? (
-                      <Badge
-                        variant="outline"
-                        className="max-w-[240px] truncate"
-                      >
-                        {c.coverTypeName}
-                      </Badge>
-                    ) : null}
-                  </div>
-                  <p className="mt-2 line-clamp-3 text-[13px] leading-relaxed text-muted-foreground">
-                    {wordingText(c.wordingHtml)}
-                  </p>
-                </div>
-                {canManageEffective ? (
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    aria-label={`Edit ${c.title}`}
-                    className="shrink-0"
-                    render={
-                      <Link href={`/underwriting/master-clauses/${c.id}`} />
-                    }
-                    nativeButton={false}
-                  >
-                    <Pencil />
-                  </Button>
-                ) : (
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    aria-label={`Lihat detail ${c.title}`}
-                    className="shrink-0"
-                    render={
-                      <Link href={`/underwriting/master-clauses/${c.id}`} />
-                    }
-                    nativeButton={false}
-                  >
-                    <Eye />
-                  </Button>
-                )}
-              </div>
-            </Card>
-          ))}
-        </div>
-      )}
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {c.cobName ?? <span className="text-muted-foreground">—</span>}
+                  </TableCell>
+                  <TableCell className="max-w-56 truncate pr-4">
+                    {c.coverTypeName ?? (
+                      <span className="text-muted-foreground">—</span>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </Card>
 
-      {result.pageCount > 1 ? (
-        <div className="flex items-center justify-between gap-3">
-          <span className="text-sm text-muted-foreground">
-            Halaman {result.page} dari {result.pageCount}
-          </span>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={result.page <= 1}
-              onClick={() => push({ page: String(result.page - 1) })}
-            >
-              Sebelumnya
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={result.page >= result.pageCount}
-              onClick={() => push({ page: String(result.page + 1) })}
-            >
-              Berikutnya
-            </Button>
-          </div>
-        </div>
-      ) : null}
+      <TablePagination
+        page={result.page}
+        pageSize={result.pageSize}
+        totalItems={result.total}
+        onPageChange={(p) => push({ page: String(p) })}
+        itemName="clause"
+      />
     </>
   )
 }

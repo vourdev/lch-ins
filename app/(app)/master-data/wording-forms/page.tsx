@@ -16,7 +16,10 @@ export default async function MasterDataWordingFormsPage() {
 
   return (
     <PageShell>
-      <PageHeader title="Wording Form" />
+      <PageHeader
+        title="Wording Form"
+        description="Wording form polis baku yang bisa dipilih di placing slip."
+      />
       <WordingFormsTab initialWordingForms={initialWordingForms} />
     </PageShell>
   )

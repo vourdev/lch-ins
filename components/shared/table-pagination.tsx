@@ -115,7 +115,7 @@ export function TablePagination({
             >
               <SelectTrigger
                 size="sm"
-                className="h-8 w-[95px] text-xs font-normal"
+                className="w-[95px] text-xs font-normal data-[size=sm]:h-8"
                 aria-label="Jumlah baris per halaman"
               >
                 <SelectValue />

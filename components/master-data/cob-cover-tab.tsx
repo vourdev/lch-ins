@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { ChevronDown, ChevronRight, Edit2, Layers, Plus, Trash2 } from "lucide-react"
+import { ChevronDown, ChevronRight, Layers, Pencil, Plus, Power, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 
 import {
@@ -11,8 +11,14 @@ import {
   toggleCoverTypeStatusAction,
   updateCoverTypeAction,
 } from "@/app/(app)/master-data/actions"
+import {
+  ACTION_COL_CLASS,
+  RowActions,
+  type RowAction,
+} from "@/components/shared/row-actions"
 import { StatusBadge } from "@/components/shared/status-badge"
 import { TableEmpty } from "@/components/shared/table-empty"
+import { TablePagination, usePagination } from "@/components/shared/table-pagination"
 import { SearchInput } from "@/components/shared/table-toolbar"
 import { usePermission } from "@/components/auth/permission-provider"
 import { Badge } from "@/components/ui/badge"
@@ -84,6 +90,15 @@ export function CobCoverTab({ initialCobs }: CobCoverTabProps) {
         )
     )
   }, [cobs, query])
+
+  const {
+    page,
+    pageSize,
+    totalItems,
+    paginatedItems,
+    setPage,
+    setPageSize,
+  } = usePagination(filteredCobs, 10)
 
   function toggleExpand(cobId: string) {
     setExpandedCobIds((prev) => ({ ...prev, [cobId]: !prev[cobId] }))
@@ -216,8 +231,6 @@ export function CobCoverTab({ initialCobs }: CobCoverTabProps) {
   }
 
   function handleDeleteCover(cobId: string, cover: CoverType) {
-    if (!confirm(`Hapus Cover Type "${cover.name}"?`)) return
-
     startTransition(async () => {
       const res = await deleteCoverTypeAction(cover.id)
       if (!res.ok) {
@@ -238,10 +251,52 @@ export function CobCoverTab({ initialCobs }: CobCoverTabProps) {
     })
   }
 
+  function cobActions(cob: MasterCobRecord): RowAction[] {
+    return [
+      {
+        label: "Tambah sub-cover",
+        icon: Plus,
+        onSelect: () => {
+          setExpandedCobIds((prev) => ({ ...prev, [cob.id]: true }))
+          openAddCover(cob.id, cob.code)
+        },
+      },
+      {
+        label: cob.isActive ? "Nonaktifkan COB" : "Aktifkan COB",
+        icon: Power,
+        disabled: isPending,
+        onSelect: () => handleToggleCob(cob.id, cob.isActive),
+      },
+    ]
+  }
+
+  function coverActions(cobId: string, ct: CoverType): RowAction[] {
+    return [
+      { label: "Edit sub-cover", icon: Pencil, onSelect: () => openEditCover(cobId, ct) },
+      {
+        label: ct.isActive ? "Nonaktifkan" : "Aktifkan",
+        icon: Power,
+        disabled: isPending,
+        onSelect: () => handleToggleCover(cobId, ct.id, ct.isActive),
+      },
+      {
+        label: "Hapus",
+        icon: Trash2,
+        destructive: true,
+        disabled: isPending,
+        confirm: {
+          title: "Hapus sub-cover ini?",
+          description: `${ct.code} ${ct.name} dihapus permanen.`,
+          actionLabel: "Hapus",
+        },
+        onSelect: () => handleDeleteCover(cobId, ct),
+      },
+    ]
+  }
+
   return (
     <div className="flex flex-col gap-4">
-      {/* Toolbar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-card p-3.5 shadow-xs">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <SearchInput
           value={query}
           onValueChange={setQuery}
@@ -249,19 +304,20 @@ export function CobCoverTab({ initialCobs }: CobCoverTabProps) {
         />
       </div>
 
-      {/* COB Table */}
       <Card className="gap-0 overflow-hidden py-0">
         <Table className="min-w-200">
           <TableHeader>
             <TableRow className="hover:bg-transparent">
-              <TableHead className="w-12"></TableHead>
+              {canManage && <TableHead className={ACTION_COL_CLASS}>Aksi</TableHead>}
+              <TableHead className="w-12">
+                <span className="sr-only">Buka sub-cover</span>
+              </TableHead>
               <TableHead className="w-24">Kode</TableHead>
               <TableHead>Nama Class of Business</TableHead>
               <TableHead className="w-32">Satuan Tarif</TableHead>
               <TableHead className="w-36">Varian Form</TableHead>
               <TableHead className="w-28 text-center">Sub-Cover</TableHead>
-              <TableHead className="w-24">Status</TableHead>
-              {canManage && <TableHead className="w-32 text-right pr-4">Aksi</TableHead>}
+              <TableHead className="w-24 pr-4">Status</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -273,7 +329,7 @@ export function CobCoverTab({ initialCobs }: CobCoverTabProps) {
                 }
               />
             ) : (
-              filteredCobs.map((cob) => {
+              paginatedItems.map((cob) => {
                 const isExpanded = expandedCobIds[cob.id]
                 const totalUsed =
                   cob._count.sppa +
@@ -284,7 +340,12 @@ export function CobCoverTab({ initialCobs }: CobCoverTabProps) {
                 return (
                   <React.Fragment key={cob.id}>
                     <TableRow>
-                      <TableCell className="pl-3">
+                      {canManage && (
+                        <TableCell className={ACTION_COL_CLASS}>
+                          <RowActions actions={cobActions(cob)} />
+                        </TableCell>
+                      )}
+                      <TableCell>
                         <Button
                           variant="ghost"
                           size="icon"
@@ -326,22 +387,9 @@ export function CobCoverTab({ initialCobs }: CobCoverTabProps) {
                           {cob.coverTypes.length}
                         </Badge>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="pr-4">
                         <StatusBadge status={cob.isActive ? "Active" : "Inactive"} />
                       </TableCell>
-                      {canManage && (
-                        <TableCell className="text-right pr-4">
-                          <div className="flex items-center justify-end gap-1">
-                            <Switch
-                              checked={cob.isActive}
-                              onCheckedChange={() => handleToggleCob(cob.id, cob.isActive)}
-                              disabled={isPending}
-                              title={cob.isActive ? "Nonaktifkan COB" : "Aktifkan COB"}
-                              className="scale-75"
-                            />
-                          </div>
-                        </TableCell>
-                      )}
                     </TableRow>
 
                     {/* Sub-Cover Rows */}
@@ -358,7 +406,7 @@ export function CobCoverTab({ initialCobs }: CobCoverTabProps) {
                                   size="sm"
                                   variant="outline"
                                   onClick={() => openAddCover(cob.id, cob.code)}
-                                  className="h-7 gap-1 text-xs"
+                                  className="h-7 gap-1"
                                 >
                                   <Plus className="size-3" />
                                   Tambah Sub-Cover
@@ -375,9 +423,10 @@ export function CobCoverTab({ initialCobs }: CobCoverTabProps) {
                                 {cob.coverTypes.map((ct) => (
                                   <div
                                     key={ct.id}
-                                    className="flex items-center justify-between py-2"
+                                    className="flex items-center gap-3 py-2"
                                   >
-                                    <div className="flex items-center gap-2">
+                                    {canManage && <RowActions actions={coverActions(cob.id, ct)} />}
+                                    <div className="flex min-w-0 flex-1 items-center gap-2">
                                       <span className="font-mono font-medium text-foreground">
                                         {ct.code}
                                       </span>
@@ -392,41 +441,7 @@ export function CobCoverTab({ initialCobs }: CobCoverTabProps) {
                                         </span>
                                       ) : null}
                                     </div>
-                                    <div className="flex items-center gap-2">
-                                      <StatusBadge status={ct.isActive ? "Active" : "Inactive"} />
-                                      {canManage && (
-                                        <>
-                                          <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            onClick={() => openEditCover(cob.id, ct)}
-                                            className="size-6 text-muted-foreground hover:text-foreground"
-                                            title="Edit Sub-Cover"
-                                          >
-                                            <Edit2 className="size-3" />
-                                          </Button>
-                                          <Switch
-                                            checked={ct.isActive}
-                                            onCheckedChange={() =>
-                                              handleToggleCover(cob.id, ct.id, ct.isActive)
-                                            }
-                                            disabled={isPending}
-                                            className="scale-65"
-                                            title={ct.isActive ? "Nonaktifkan" : "Aktifkan"}
-                                          />
-                                          <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            onClick={() => handleDeleteCover(cob.id, ct)}
-                                            disabled={isPending}
-                                            className="size-6 text-destructive hover:bg-destructive/10"
-                                            title="Hapus Sub-Cover"
-                                          >
-                                            <Trash2 className="size-3" />
-                                          </Button>
-                                        </>
-                                      )}
-                                    </div>
+                                    <StatusBadge status={ct.isActive ? "Active" : "Inactive"} />
                                   </div>
                                 ))}
                               </div>
@@ -443,6 +458,15 @@ export function CobCoverTab({ initialCobs }: CobCoverTabProps) {
         </Table>
       </Card>
 
+      <TablePagination
+        page={page}
+        pageSize={pageSize}
+        totalItems={totalItems}
+        onPageChange={setPage}
+        onPageSizeChange={setPageSize}
+        itemName="COB"
+      />
+
       {/* Dialog Cover Type */}
       <Dialog open={coverDialogOpen} onOpenChange={setCoverDialogOpen}>
         <DialogContent className="sm:max-w-md">
@@ -450,14 +474,14 @@ export function CobCoverTab({ initialCobs }: CobCoverTabProps) {
             <DialogTitle>
               {editingCover ? "Edit Type of Cover" : "Tambah Sub-Cover Type"}
             </DialogTitle>
-            <DialogDescription className="text-xs">
+            <DialogDescription>
               Sub-tipe jaminan asuransi (contoh: 0311 Marine Cargo Open Cover).
             </DialogDescription>
           </DialogHeader>
 
           <div className="flex flex-col gap-3.5 py-2">
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="cover-code" className="text-xs font-medium">
+              <Label htmlFor="cover-code">
                 Kode Sub-Cover (3-6 karakter unik) <span className="text-destructive">*</span>
               </Label>
               <Input
@@ -466,7 +490,7 @@ export function CobCoverTab({ initialCobs }: CobCoverTabProps) {
                 value={coverCode}
                 onChange={(e) => setCoverCode(e.target.value)}
                 maxLength={6}
-                className="h-8.5 font-mono text-xs"
+                className="font-mono"
               />
               {!editingCover ? (
                 <p className="text-[11px] text-muted-foreground">
@@ -477,7 +501,7 @@ export function CobCoverTab({ initialCobs }: CobCoverTabProps) {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="cover-name" className="text-xs font-medium">
+              <Label htmlFor="cover-name">
                 Nama Type of Cover <span className="text-destructive">*</span>
               </Label>
               <Input
@@ -485,12 +509,11 @@ export function CobCoverTab({ initialCobs }: CobCoverTabProps) {
                 placeholder="Contoh: Marine Cargo Open Cover, Property All Risks"
                 value={coverName}
                 onChange={(e) => setCoverName(e.target.value)}
-                className="h-8.5 text-xs"
               />
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="cover-abbreviation" className="text-xs font-medium">
+              <Label htmlFor="cover-abbreviation">
                 Singkatan di Nomor Slip
               </Label>
               <Input
@@ -499,7 +522,7 @@ export function CobCoverTab({ initialCobs }: CobCoverTabProps) {
                 value={coverAbbreviation}
                 onChange={(e) => setCoverAbbreviation(e.target.value.toUpperCase())}
                 maxLength={10}
-                className="h-8.5 font-mono text-xs"
+                className="font-mono"
               />
               <p className="text-[11px] text-muted-foreground">
                 Dipakai di nomor slip, misalnya 001/LCH-PLCMT/PS-PAR/X/2026.
@@ -508,7 +531,7 @@ export function CobCoverTab({ initialCobs }: CobCoverTabProps) {
             </div>
 
             <div className="flex items-center justify-between rounded-lg border p-2.5">
-              <span className="text-xs font-medium">Status Aktif Operasional</span>
+              <span className="text-sm font-medium">Status Aktif Operasional</span>
               <Switch checked={coverIsActive} onCheckedChange={setCoverIsActive} />
             </div>
           </div>
@@ -519,7 +542,6 @@ export function CobCoverTab({ initialCobs }: CobCoverTabProps) {
               variant="outline"
               size="sm"
               onClick={() => setCoverDialogOpen(false)}
-              className="text-xs"
             >
               Batal
             </Button>
@@ -528,7 +550,6 @@ export function CobCoverTab({ initialCobs }: CobCoverTabProps) {
               size="sm"
               onClick={handleSaveCover}
               disabled={isPending}
-              className="text-xs"
             >
               {editingCover ? "Simpan Perubahan" : "Tambah Sub-Cover"}
             </Button>

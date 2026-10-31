@@ -16,7 +16,10 @@ export default async function MasterDataOjkClassesPage() {
 
   return (
     <PageShell>
-      <PageHeader title="Klasifikasi OJK" />
+      <PageHeader
+        title="Klasifikasi OJK"
+        description="Klasifikasi lini usaha menurut OJK untuk pengelompokan laporan produksi dan polis."
+      />
       <CobOjkClassesTab initialCobOjkClasses={initialCobOjkClasses} />
     </PageShell>
   )
