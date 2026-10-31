@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import { redirect } from "next/navigation"
 
+import { FormOptionsBoundary } from "@/components/shared/form-options-boundary"
 import { NewSlip } from "@/components/underwriting/new-slip"
 import { canManage } from "@/lib/access"
 import { getClientById } from "@/lib/server/clients"
@@ -36,12 +37,14 @@ export default async function NewSlipPage({
   }
 
   return (
-    <NewSlip
-      sppaId={sppa}
-      clientId={client}
-      initialSppa={initialSppa ?? undefined}
-      initialClient={resolvedClient ?? undefined}
-      vehicleOptions={vehicleOptions}
-    />
+    <FormOptionsBoundary>
+      <NewSlip
+        sppaId={sppa}
+        clientId={client}
+        initialSppa={initialSppa ?? undefined}
+        initialClient={resolvedClient ?? undefined}
+        vehicleOptions={vehicleOptions}
+      />
+    </FormOptionsBoundary>
   )
 }

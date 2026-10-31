@@ -206,14 +206,24 @@ function KycIndividualRows({ client }: { client: KycClient }) {
       </KycRow>
       <KycRow no={6} label="Sumber Penghasilan" en="Source of Income">
         <div className="flex flex-col gap-1">
-          {INCOME_OPTIONS.map((o) => (
-            <KycCheckbox
-              key={o.value}
-              checked={same(client.incomeSource, o.value)}
-              label={o.label}
-              en={o.en}
-            />
-          ))}
+          {INCOME_OPTIONS.map((o) => {
+            // Sumber penghasilan di luar kotak cetak masuk Lain-lain, sama
+            // seperti tujuan asuransi.
+            const income = client.incomeSource?.trim()
+            const other =
+              Boolean(income) && !INCOME_OPTIONS.some((x) => same(income, x.value))
+            const isOther = o.value === "Lain-lain"
+            const checked = same(income, o.value) || (isOther && other)
+            return (
+              <KycCheckbox
+                key={o.value}
+                checked={checked}
+                label={o.label}
+                en={o.en}
+                note={checked && isOther && other ? income : undefined}
+              />
+            )
+          })}
         </div>
       </KycRow>
       <PurposeRow no={7} client={client} />
@@ -222,11 +232,17 @@ function KycIndividualRows({ client }: { client: KycClient }) {
 }
 
 function PurposeRow({ no, client }: { no: number; client: KycClient }) {
+  // Form KYC LCH hanya punya tiga kotak. Tujuan lain yang ditambah di master
+  // data dicentang sebagai Lain-lain dengan namanya sebagai keterangan.
+  const purpose = client.insurancePurpose?.trim()
+  const listed = PURPOSE_OPTIONS.some((o) => same(purpose, o.value))
+  const other = Boolean(purpose) && !listed
   return (
     <KycRow no={no} label="Tujuan Menutup Asuransi" en="Purpose of Insurance">
       <div className="flex flex-col gap-1">
         {PURPOSE_OPTIONS.map((o) => {
-          const checked = same(client.insurancePurpose, o.value)
+          const isOther = o.value === "Lain-lain"
+          const checked = same(purpose, o.value) || (isOther && other)
           return (
             <KycCheckbox
               key={o.value}
@@ -234,8 +250,8 @@ function PurposeRow({ no, client }: { no: number; client: KycClient }) {
               label={o.label}
               en={o.en}
               note={
-                checked && o.value === "Lain-lain"
-                  ? client.insurancePurposeNote
+                checked && isOther
+                  ? client.insurancePurposeNote || (other ? purpose : undefined)
                   : undefined
               }
             />

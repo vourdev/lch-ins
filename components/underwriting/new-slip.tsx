@@ -2,6 +2,7 @@
 
 import * as React from "react"
 
+import { useFormOptions } from "@/components/shared/form-options-provider"
 import { PlacingSlipForm } from "@/components/underwriting/placing-slip-form"
 import {
   emptySlip,
@@ -11,6 +12,8 @@ import {
 import type { ClientRecord } from "@/lib/server/clients"
 import type { SppaRecord } from "@/lib/server/sppa"
 import type { VehicleBrandOption } from "@/lib/data"
+import { coversFor } from "@/lib/form-options"
+import { normalizeCob } from "@/lib/format"
 import { store } from "@/lib/store"
 
 /**
@@ -36,13 +39,18 @@ export function NewSlip({
     if (initialClient) store.upsert("clients", initialClient)
   }, [initialSppa, initialClient])
 
+  const options = useFormOptions()
   const [initial] = React.useState(() => {
     const sppa =
       (sppaId ? store.get("sppa", sppaId) : null) ?? initialSppa ?? null
     if (sppa) {
       const client =
         store.get("clients", sppa.clientId) ?? initialClient ?? null
-      return slipFromSppa(sppa, client)
+      return slipFromSppa(
+        sppa,
+        client,
+        coversFor(options, normalizeCob(sppa.cob))
+      )
     }
     const client =
       (clientId ? store.get("clients", clientId) : null) ??

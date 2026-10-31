@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 
 import { PageShell } from "@/components/layout/page-header"
+import { FormOptionsBoundary } from "@/components/shared/form-options-boundary"
 import { ClaimsView } from "@/components/claims/claims-view"
 import {
   listClaimFormOptions,
@@ -22,7 +23,9 @@ export default async function ClaimsPage() {
 
   return (
     <PageShell>
-      <ClaimsView initialClaims={initialClaims} formOptions={formOptions} />
+      <FormOptionsBoundary>
+        <ClaimsView initialClaims={initialClaims} formOptions={formOptions} />
+      </FormOptionsBoundary>
     </PageShell>
   )
 }

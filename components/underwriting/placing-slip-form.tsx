@@ -19,6 +19,7 @@ import { toast } from "sonner"
 import { PageShell } from "@/components/layout/page-header"
 import { useToday } from "@/components/layout/today-provider"
 import { SelectInput } from "@/components/shared/form-fields"
+import { useFormOptions } from "@/components/shared/form-options-provider"
 import { SectionCard } from "@/components/shared/section-card"
 import {
   SlipFormActions,
@@ -96,17 +97,14 @@ import {
   totalSumInsured,
 } from "@/lib/calc"
 import {
-  CLASSES_OF_BUSINESS,
   CONSTRUCTION_CLASSES,
-  CURRENCIES,
-  TYPE_OF_COVER,
-  WORDING_FORMS,
   type ClassOfBusiness,
   type PlacingSlip,
   type RateException,
   type VehicleBrandOption,
 } from "@/lib/data"
 import { BI_SCALE_OJK } from "@/lib/data/ojk-tariff"
+import { cobLabels, coversFor, withCurrent } from "@/lib/form-options"
 import { money, percent } from "@/lib/format"
 import { newId, store, useRecord } from "@/lib/store"
 import { cn } from "@/lib/utils"
@@ -123,8 +121,7 @@ const SECTION_KEYS = [
 ] as const
 type SectionKey = (typeof SECTION_KEYS)[number]
 
-const COB_ITEMS = CLASSES_OF_BUSINESS.map((c) => ({ label: c, value: c }))
-const CURRENCY_ITEMS = CURRENCIES.map((c) => ({ label: c, value: c }))
+const toItem = (v: string) => ({ label: v, value: v })
 const CONSTRUCTION_ITEMS = CONSTRUCTION_CLASSES.map((c) => ({
   label: `${c.label} (${c.code}) — ${c.description}`,
   value: c.code,
@@ -230,10 +227,21 @@ function SlipEditor({
   const locked = slip.status === "Cancelled" || slip.status === "Closed"
   const isProperty = slip.cob === "Property"
   const isMotor = slip.cob === "Motor Vehicle"
-  const coverItems = (TYPE_OF_COVER[slip.cob] ?? []).map((t) => ({
-    label: t.label,
-    value: t.label,
-  }))
+
+  // Pilihan dari master data. Nilai slip yang sudah tidak ada di master tetap
+  // ditampilkan supaya slip lama tidak kehilangan isiannya saat diedit.
+  const options = useFormOptions()
+  const cobItems = withCurrent(cobLabels(options), slip.cob).map(toItem)
+  const currencyItems = withCurrent(
+    options.currencies.map((c) => c.code),
+    slip.currency
+  ).map(toItem)
+  const covers = coversFor(options, slip.cob)
+  const coverItems = withCurrent(
+    covers.map((c) => c.name),
+    slip.typeOfCover
+  ).map(toItem)
+  const wordingNames = options.wordingForms.map((w) => w.name)
 
   const lines = rateLinesWithBounds(slip)
   const md = sumItems(slip.sumInsuredSection1)
@@ -256,7 +264,7 @@ function SlipEditor({
     (id) => slip.clauseOverrides?.[id]
   ).length
   const customWording = slip.wordingForms.filter(
-    (w) => w && !WORDING_FORMS.includes(w)
+    (w) => w && !wordingNames.includes(w)
   )
 
   /** Isi satu baris rate dari panel referensi OJK, sekaligus catat batasnya. */
@@ -526,7 +534,7 @@ function SlipEditor({
               <Field>
                 <FieldLabel>Class of Business *</FieldLabel>
                 <Select
-                  items={COB_ITEMS}
+                  items={cobItems}
                   value={slip.cob}
                   onValueChange={(v) =>
                     setSlip((s) => switchCob(s, v as ClassOfBusiness))
@@ -537,7 +545,7 @@ function SlipEditor({
                   </SelectTrigger>
                   <SelectContent>
                     <SelectGroup>
-                      {COB_ITEMS.map((i) => (
+                      {cobItems.map((i) => (
                         <SelectItem key={i.value} value={i.value}>
                           {i.label}
                         </SelectItem>
@@ -550,7 +558,7 @@ function SlipEditor({
               <Field>
                 <FieldLabel>Currency</FieldLabel>
                 <Select
-                  items={CURRENCY_ITEMS}
+                  items={currencyItems}
                   value={slip.currency}
                   onValueChange={(v) => set({ currency: v as string })}
                 >
@@ -559,7 +567,7 @@ function SlipEditor({
                   </SelectTrigger>
                   <SelectContent>
                     <SelectGroup>
-                      {CURRENCY_ITEMS.map((i) => (
+                      {currencyItems.map((i) => (
                         <SelectItem key={i.value} value={i.value}>
                           {i.label}
                         </SelectItem>
@@ -580,7 +588,11 @@ function SlipEditor({
                   onValueChange={(v) =>
                     set({
                       typeOfCover: (v as string) ?? "",
-                      coverCode: coverCodeFor(slip.cob, (v as string) ?? ""),
+                      coverCode: coverCodeFor(
+                        slip.cob,
+                        (v as string) ?? "",
+                        covers
+                      ),
                     })
                   }
                 >
@@ -701,7 +713,7 @@ function SlipEditor({
                 summary={`${slip.wordingForms.filter(Boolean).length} wording`}
               >
                 <div className="flex flex-wrap gap-2">
-                  {WORDING_FORMS.map((w) => {
+                  {wordingNames.map((w) => {
                     const active = slip.wordingForms.includes(w)
                     return (
                       <Button
@@ -738,7 +750,7 @@ function SlipEditor({
                         set({
                           wordingForms: [
                             ...slip.wordingForms.filter((w) =>
-                              WORDING_FORMS.includes(w)
+                              wordingNames.includes(w)
                             ),
                             ...v,
                           ],

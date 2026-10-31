@@ -45,8 +45,8 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useCobFilterItems } from "@/components/shared/form-options-provider"
 import {
-  CLASSES_OF_BUSINESS,
   POLICY_TYPES,
   policyStatus,
   premiumIdr,
@@ -60,10 +60,6 @@ import type { ClientOption } from "@/lib/server/clients"
 import type { PolicyFormOptions } from "@/lib/server/policies"
 import { store, useCollection } from "@/lib/store"
 
-const COB_ITEMS = [
-  { label: "Semua COB", value: "all" },
-  ...CLASSES_OF_BUSINESS.map((c) => ({ label: c, value: c })),
-]
 const STATUS_ITEMS = [
   { label: "Semua status", value: "all" },
   { label: "Active", value: "Active" },
@@ -97,6 +93,7 @@ export function PolicyDatabase({
   clientOptions: ClientOption[]
   formOptions: PolicyFormOptions
 }) {
+  const cobItems = useCobFilterItems()
   const today = useToday()
   const permission = usePermission()
   const canManage = permission.canManage("/policies")
@@ -307,7 +304,7 @@ export function PolicyDatabase({
             placeholder="Cari no. polis, tertanggung, asuransi…"
           />
           <Select
-            items={COB_ITEMS}
+            items={cobItems}
             value={cob}
             onValueChange={(v) => setCob(v as string)}
           >
@@ -320,7 +317,7 @@ export function PolicyDatabase({
             </SelectTrigger>
             <SelectContent>
               <SelectGroup>
-                {COB_ITEMS.map((i) => (
+                {cobItems.map((i) => (
                   <SelectItem key={i.value} value={i.value}>
                     {i.label}
                   </SelectItem>

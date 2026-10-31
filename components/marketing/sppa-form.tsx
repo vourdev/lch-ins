@@ -16,18 +16,17 @@ import {
   SelectInput,
   TextField,
 } from "@/components/shared/form-fields"
+import { useFormOptions } from "@/components/shared/form-options-provider"
 import { FieldGroup, FieldSeparator } from "@/components/ui/field"
 import {
-  CLASSES_OF_BUSINESS,
-  CURRENCIES,
   SPPA_QUESTIONS,
-  TYPE_OF_COVER,
   type ClassOfBusiness,
   type Sppa,
   type SppaStatus,
   type VehicleBrandOption,
 } from "@/lib/data"
 import { OCCUPATION_TARIFFS } from "@/lib/data/ojk-tariff"
+import { cobLabels, coversFor, withCurrent } from "@/lib/form-options"
 import { addMonths, todayIso } from "@/lib/date"
 import type { SppaInput, SppaRecord } from "@/lib/server/sppa"
 import { store, useCollection } from "@/lib/store"
@@ -124,7 +123,17 @@ export function SppaForm({
   const set = (patch: Partial<Draft>) => setDraft((d) => ({ ...d, ...patch }))
 
   const questions = SPPA_QUESTIONS[draft.cob] ?? []
-  const coverItems = (TYPE_OF_COVER[draft.cob] ?? []).map((t) => t.label)
+  // Pilihan dari master data; nilai SPPA lama yang sudah tidak ada tetap tampil.
+  const options = useFormOptions()
+  const cobItems = withCurrent(cobLabels(options), draft.cob)
+  const coverItems = withCurrent(
+    coversFor(options, draft.cob).map((c) => c.name),
+    draft.typeOfCover
+  )
+  const currencyItems = withCurrent(
+    options.currencies.map((c) => c.code),
+    draft.currency
+  )
 
   const brandOptions = React.useMemo(() => {
     return (vehicleOptions ?? [])
@@ -231,7 +240,7 @@ export function SppaForm({
           <SelectInput
             label="Class of Business"
             required
-            items={CLASSES_OF_BUSINESS}
+            items={cobItems}
             value={draft.cob}
             onValueChange={(v) =>
               set({
@@ -324,7 +333,7 @@ export function SppaForm({
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <SelectInput
             label="Mata Uang"
-            items={CURRENCIES}
+            items={currencyItems}
             value={draft.currency}
             onValueChange={(v) => set({ currency: v })}
             placeholder="Pilih mata uang"

@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import { redirect } from "next/navigation"
 
+import { FormOptionsBoundary } from "@/components/shared/form-options-boundary"
 import { QuotationDraftForm } from "@/components/underwriting/quotation-draft-form"
 import { canManage } from "@/lib/access"
 import { currentUser } from "@/lib/server/session"
@@ -23,5 +24,9 @@ export default async function QuotationDraftPage({
 
   const { id } = await params
   const slip = (await getPlacingSlipById(id)) ?? slipById(id) ?? null
-  return <QuotationDraftForm id={id} initial={slip} />
+  return (
+    <FormOptionsBoundary>
+      <QuotationDraftForm id={id} initial={slip} />
+    </FormOptionsBoundary>
+  )
 }

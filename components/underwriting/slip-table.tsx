@@ -34,11 +34,8 @@ import {
 } from "@/components/ui/table"
 import { useToday } from "@/components/layout/today-provider"
 import { totalPremium, totalSumInsured } from "@/lib/calc"
-import {
-  CLASSES_OF_BUSINESS,
-  SLIP_STATUSES,
-  type PlacingSlip,
-} from "@/lib/data"
+import { useCobFilterItems } from "@/components/shared/form-options-provider"
+import { SLIP_STATUSES, type PlacingSlip } from "@/lib/data"
 import type { ExportSpec } from "@/lib/export"
 import { dateShort, money } from "@/lib/format"
 import { newId, store, useCollection } from "@/lib/store"
@@ -55,10 +52,6 @@ const STATUS_ITEMS = [
     label: s === "Cancelled" ? "Dibatalkan" : s,
     value: s,
   })),
-]
-const COB_ITEMS = [
-  { label: "Semua COB", value: "all" },
-  ...CLASSES_OF_BUSINESS.map((c) => ({ label: c, value: c })),
 ]
 
 function actionsFor(
@@ -185,6 +178,7 @@ export function SlipTable({
   initialSlips?: PlacingSlipRecord[]
 }) {
   const today = useToday()
+  const cobItems = useCobFilterItems()
 
   React.useEffect(() => {
     if (initialSlips && initialSlips.length > 0) {
@@ -258,7 +252,7 @@ export function SlipTable({
           placeholder="Cari no. slip, tertanggung, type of cover…"
         />
         <Select
-          items={COB_ITEMS}
+          items={cobItems}
           value={cob}
           onValueChange={(v) => setCob(v as string)}
         >
@@ -267,7 +261,7 @@ export function SlipTable({
           </SelectTrigger>
           <SelectContent>
             <SelectGroup>
-              {COB_ITEMS.map((i) => (
+              {cobItems.map((i) => (
                 <SelectItem key={i.value} value={i.value}>
                   {i.label}
                 </SelectItem>

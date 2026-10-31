@@ -9,8 +9,10 @@ import type {
 } from "./types"
 
 /*
- * Daftar pilihan pendek (lookup_values di ERD). Di fase backend semuanya
- * diambil dari master data, bukan dari konstanta ini.
+ * Daftar yang tersisa di sini dipakai logika aplikasi (status, tipe klien,
+ * tipe polis, kelas konstruksi). Pilihan dropdown lain (COB, type of cover,
+ * asuransi, mata uang, wording, dan lookup form klien) dibaca dari master data
+ * lewat lib/server/form-options.ts.
  */
 
 export const CLIENT_TYPES: ClientType[] = ["Korporasi", "Perorangan"]
@@ -19,30 +21,6 @@ export const CLIENT_STATUSES: ClientStatus[] = [
   "Active",
   "Inactive",
 ]
-export const ID_TYPES = ["KTP", "SIM", "Paspor"]
-export const INCOME_SOURCES = [
-  "Hasil usaha",
-  "Gaji bulanan",
-  "Wirausaha",
-  "Lain-lain",
-]
-export const INSURANCE_PURPOSES = [
-  "Perlindungan aset",
-  "Persyaratan pemberi kredit",
-  "Lain-lain",
-]
-export const ADDRESS_TYPES = [
-  "Alamat Perusahaan",
-  "Alamat Korespondensi",
-  "Alamat Penagihan",
-]
-export const CLIENT_DOCUMENT_TYPES = [
-  "Copy KTP, SIM, atau paspor",
-  "Copy NPWP",
-  "Form KYC",
-  "Lain-lain",
-]
-
 export const SLIP_STATUSES: SlipStatus[] = [
   "Draft",
   "Released",
@@ -102,20 +80,11 @@ export function constructionClassLabel(code: string | undefined | null) {
   return hit ? `${hit.label} (${hit.code})` : (code ?? "")
 }
 
-export const CLASSES_OF_BUSINESS: ClassOfBusiness[] = [
-  "Property",
-  "Motor Vehicle",
-  "Marine Cargo",
-  "Engineering",
-  "Liability",
-  "Personal Accident",
-  "Surety Bond",
-  "Terrorism",
-]
-
-export const CURRENCIES = ["IDR", "USD", "SGD", "EUR"]
-
-/** Type of cover per COB — kode dipakai untuk penomoran slip. */
+/**
+ * Type of cover lama per COB beserta kodenya. Tidak lagi dipakai sebagai
+ * pilihan form (pilihan dari master data); hanya cadangan kode {COVER} untuk
+ * slip lama yang labelnya belum ada di master, misalnya "PAR + EQVET".
+ */
 export const TYPE_OF_COVER: Record<
   ClassOfBusiness,
   { label: string; code: string | null }[]
@@ -159,27 +128,6 @@ export const TYPE_OF_COVER: Record<
   ],
   Terrorism: [{ label: "Terrorism & Sabotage", code: "TS" }],
 }
-
-export const INSURERS = [
-  "PT Asuransi Multi Artha Guna Tbk",
-  "PT Asuransi Sinar Mas",
-  "PT Asuransi Central Asia",
-  "PT Asuransi Astra Buana",
-  "PT Asuransi Tugu Pratama Indonesia Tbk",
-  "PT Asuransi Wahana Tata",
-  "PT Asuransi Bina Dana Arta Tbk",
-  "PT Asuransi Adira Dinamika",
-  "PT Asuransi Jasa Indonesia",
-  "PT Asuransi Kredit Indonesia",
-]
-
-export const ADJUSTERS = [
-  "PT Radita Hutama Internusa",
-  "PT Cunningham Lindsey Indonesia",
-  "PT McLarens Indonesia",
-  "PT Crawford Indonesia",
-  "Internal LCH",
-]
 
 /** Okupasi OJK (SE OJK No. 6/SEOJK.05/2017) — subset yang dipakai. */
 export const OCCUPATIONS = [
@@ -347,22 +295,3 @@ export const MOTOR_RATE_LINES = [
   "Authorized Workshop",
   "Theft by Driver",
 ]
-
-export const WORDING_FORMS = [
-  "Buku Wording Standar PSAKBI 2021",
-  "Polis Standar Asuransi Kendaraan Bermotor Indonesia (PSAKBI)",
-  "Polis Standar Asuransi Kebakaran Indonesia (PSAKI)",
-  "Munich Re Property All Risks Wording",
-  "Institute Cargo Clauses (A) 1/1/09",
-]
-
-export const COB_COLORS: Record<string, string> = {
-  Property: "var(--chart-1)",
-  "Motor Vehicle": "var(--chart-2)",
-  "Marine Cargo": "var(--chart-3)",
-  Engineering: "var(--chart-4)",
-  Liability: "var(--chart-5)",
-  "Personal Accident": "var(--chart-1)",
-  "Surety Bond": "var(--chart-2)",
-  Terrorism: "var(--chart-3)",
-}

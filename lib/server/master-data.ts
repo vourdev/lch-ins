@@ -1,5 +1,7 @@
 import "server-only"
 
+import { createHash } from "node:crypto"
+
 import type {
   Adjuster,
   BankAccount,
@@ -47,7 +49,14 @@ export interface CoverTypeInput {
   cobId: string
   code: string
   name: string
+  /** Token {COVER} di nomor slip, contoh PAR. Kosong berarti tanpa segmen cover. */
+  abbreviation?: string | null
   isActive?: boolean
+}
+
+export interface CurrencyInput {
+  code: string
+  name: string
 }
 
 export interface InsurerInput {
@@ -418,6 +427,7 @@ export async function createCoverType(
         cobId: input.cobId,
         code: input.code.trim(),
         name: input.name.trim(),
+        abbreviation: input.abbreviation?.trim() || null,
         isActive: input.isActive ?? true,
       },
     })
@@ -445,6 +455,7 @@ export async function updateCoverType(
         cobId: input.cobId,
         code: input.code.trim(),
         name: input.name.trim(),
+        abbreviation: input.abbreviation?.trim() || null,
         isActive: input.isActive ?? before.isActive,
       },
     })
@@ -758,6 +769,67 @@ export async function toggleBankAccountStatus(
       userId,
       entity: "bank_accounts",
       entityId: id,
+      action: "Update",
+      before: { isActive: before.isActive },
+      after: { isActive: updated.isActive },
+    })
+  })
+}
+
+/**
+ * audit_logs.entity_id bertipe UUID, sedangkan kunci mata uang adalah kode ISO.
+ * Kode diubah jadi UUID tetap (gaya UUIDv5) supaya semua jejak satu mata uang
+ * terkumpul di id yang sama.
+ */
+function currencyAuditId(code: string) {
+  const h = createHash("sha1").update(`currencies:${code}`).digest("hex")
+  const variant = ((parseInt(h.slice(16, 18), 16) & 0x3f) | 0x80).toString(16)
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-5${h.slice(13, 16)}-${variant}${h.slice(18, 20)}-${h.slice(20, 32)}`
+}
+
+/**
+ * Mata uang baru. Kodenya ISO 4217 (tiga huruf) dan menjadi kunci, jadi tidak
+ * bisa diubah; mata uang yang tidak dipakai cukup dinonaktifkan.
+ */
+export async function createCurrency(
+  input: CurrencyInput,
+  userId: string
+): Promise<Currency> {
+  return prisma.$transaction(async (tx) => {
+    const code = input.code.trim().toUpperCase()
+    const existing = await tx.currency.findUnique({ where: { code } })
+    if (existing) {
+      throw new Error(`Mata uang ${code} sudah ada di master data.`)
+    }
+    const created = await tx.currency.create({
+      data: { code, name: input.name.trim(), isActive: true },
+    })
+    await recordAudit(tx, {
+      userId,
+      entity: "currencies",
+      entityId: currencyAuditId(created.code),
+      action: "Create",
+      after: created,
+    })
+    return created
+  })
+}
+
+export async function toggleCurrencyStatus(
+  code: string,
+  isActive: boolean,
+  userId: string
+): Promise<void> {
+  await prisma.$transaction(async (tx) => {
+    const before = await tx.currency.findUniqueOrThrow({ where: { code } })
+    const updated = await tx.currency.update({
+      where: { code },
+      data: { isActive },
+    })
+    await recordAudit(tx, {
+      userId,
+      entity: "currencies",
+      entityId: currencyAuditId(code),
       action: "Update",
       before: { isActive: before.isActive },
       after: { isActive: updated.isActive },

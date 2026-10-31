@@ -9,6 +9,7 @@ import type {
   BankAccount,
   ClassOfBusiness,
   CoverType,
+  Currency,
   Insurer,
   LookupValue,
   VehicleBrand,
@@ -25,6 +26,7 @@ import {
   createBankAccount,
   createCob,
   createCoverType,
+  createCurrency,
   createInsurer,
   createLookupValue,
   createWordingForm,
@@ -35,6 +37,7 @@ import {
   toggleBankAccountStatus,
   toggleCobStatus,
   toggleCoverTypeStatus,
+  toggleCurrencyStatus,
   toggleInsurerStatus,
   toggleLookupValueStatus,
   toggleWordingFormStatus,
@@ -79,7 +82,25 @@ const coverTypeSchema = z.object({
   cobId: z.string().min(1, "Pilih COB yang valid"),
   code: z.string().trim().min(3, "Kode Cover Type minimal 3 karakter"),
   name: z.string().trim().min(2, "Nama Cover Type minimal 2 karakter"),
+  // Masuk ke nomor slip (PS-PAR), jadi tidak boleh berisi garis miring atau
+  // spasi yang memecah format nomor.
+  abbreviation: z
+    .string()
+    .trim()
+    .max(10, "Singkatan maksimal 10 karakter")
+    .regex(/^[A-Za-z0-9]*$/, "Singkatan hanya huruf dan angka, tanpa spasi")
+    .transform((v) => (v ? v.toUpperCase() : null))
+    .nullish(),
   isActive: z.boolean().optional(),
+})
+
+const currencySchema = z.object({
+  code: z
+    .string()
+    .trim()
+    .regex(/^[A-Za-z]{3}$/, "Kode mata uang harus 3 huruf (ISO 4217), contoh JPY")
+    .transform((v) => v.toUpperCase()),
+  name: z.string().trim().min(2, "Nama mata uang minimal 2 karakter"),
 })
 
 const insurerSchema = z.object({
@@ -425,6 +446,46 @@ export async function toggleBankAccountStatusAction(
     return {
       ok: false,
       error: err instanceof Error ? err.message : "Gagal mengubah status rekening bank",
+    }
+  }
+}
+
+export async function createCurrencyAction(
+  data: z.input<typeof currencySchema>
+): Promise<ActionResponse<Currency>> {
+  try {
+    const session = await requireManage("/master-data")
+    const parsed = currencySchema.parse(data)
+    const res = await createCurrency(parsed, session.id)
+    revalidatePath("/master-data")
+    return { ok: true, data: res }
+  } catch (err) {
+    unstable_rethrow(err)
+    return {
+      ok: false,
+      error: err instanceof z.ZodError
+        ? err.issues[0]?.message ?? "Data mata uang tidak valid"
+        : err instanceof Error
+          ? err.message
+          : "Gagal menambah mata uang",
+    }
+  }
+}
+
+export async function toggleCurrencyStatusAction(
+  code: string,
+  isActive: boolean
+): Promise<ActionResponse<void>> {
+  try {
+    const session = await requireManage("/master-data")
+    await toggleCurrencyStatus(code, isActive, session.id)
+    revalidatePath("/master-data")
+    return { ok: true }
+  } catch (err) {
+    unstable_rethrow(err)
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : "Gagal mengubah status mata uang",
     }
   }
 }

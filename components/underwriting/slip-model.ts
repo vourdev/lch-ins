@@ -12,6 +12,7 @@ import {
   type Sppa,
 } from "@/lib/data"
 import { OCCUPATION_TARIFFS } from "@/lib/data/ojk-tariff"
+import type { CoverOption } from "@/lib/form-options"
 import {
   findMotorTariffBounds,
   findMotorExtensionBounds,
@@ -153,7 +154,18 @@ export function switchCob(
   })
 }
 
-export function coverCodeFor(cob: ClassOfBusiness, typeOfCover: string) {
+/**
+ * Token {COVER} di nomor slip. Singkatan dari master data didahulukan; label
+ * lama yang belum ada di master (misalnya "PAR + EQVET") memakai kode bawaan
+ * supaya nomor slip lama tetap sama.
+ */
+export function coverCodeFor(
+  cob: ClassOfBusiness,
+  typeOfCover: string,
+  covers?: Pick<CoverOption, "name" | "abbreviation">[]
+) {
+  const fromMaster = covers?.find((c) => c.name === typeOfCover)?.abbreviation
+  if (fromMaster) return fromMaster
   return TYPE_OF_COVER[cob]?.find((t) => t.label === typeOfCover)?.code ?? null
 }
 
@@ -370,7 +382,11 @@ export function slipForClient(client: Client): PlacingSlip {
   }
 }
 
-export function slipFromSppa(sppa: Sppa, client: Client | null): PlacingSlip {
+export function slipFromSppa(
+  sppa: Sppa,
+  client: Client | null,
+  covers?: Pick<CoverOption, "name" | "abbreviation">[]
+): PlacingSlip {
   const cob = normalizeCob(sppa.cob)
   const base = switchCob(emptySlip(), cob)
   const property = cob === "Property"
@@ -411,7 +427,7 @@ export function slipFromSppa(sppa: Sppa, client: Client | null): PlacingSlip {
       ? (correspondenceAddress(client)?.value ?? "")
       : "",
     typeOfCover: sppa.typeOfCover,
-    coverCode: coverCodeFor(cob, sppa.typeOfCover),
+    coverCode: coverCodeFor(cob, sppa.typeOfCover, covers),
     currency: sppa.currency,
     inceptionDate: sppa.periodStart,
     expiryDate: sppa.periodEnd,

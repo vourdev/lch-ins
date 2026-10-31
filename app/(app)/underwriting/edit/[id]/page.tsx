@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import { redirect } from "next/navigation"
 
+import { FormOptionsBoundary } from "@/components/shared/form-options-boundary"
 import { PlacingSlipForm } from "@/components/underwriting/placing-slip-form"
 import { canManage } from "@/lib/access"
 import { currentUser } from "@/lib/server/session"
@@ -29,11 +30,13 @@ export default async function EditSlipPage({
   ])
 
   return (
-    <PlacingSlipForm
-      id={id}
-      initial={slip}
-      mode="edit"
-      vehicleOptions={vehicleOptions}
-    />
+    <FormOptionsBoundary>
+      <PlacingSlipForm
+        id={id}
+        initial={slip}
+        mode="edit"
+        vehicleOptions={vehicleOptions}
+      />
+    </FormOptionsBoundary>
   )
 }

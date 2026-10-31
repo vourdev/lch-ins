@@ -83,6 +83,7 @@ export function CobCoverTab({
   const [editingCover, setEditingCover] = React.useState<CoverType | null>(null)
   const [coverCode, setCoverCode] = React.useState("")
   const [coverName, setCoverName] = React.useState("")
+  const [coverAbbreviation, setCoverAbbreviation] = React.useState("")
   const [coverIsActive, setCoverIsActive] = React.useState(true)
 
   const [prevInitialCobs, setPrevInitialCobs] = React.useState(initialCobs)
@@ -135,6 +136,7 @@ export function CobCoverTab({
     setEditingCover(null)
     setCoverCode(cobCodeVal)
     setCoverName("")
+    setCoverAbbreviation("")
     setCoverIsActive(true)
     setCoverDialogOpen(true)
   }
@@ -144,6 +146,7 @@ export function CobCoverTab({
     setEditingCover(cover)
     setCoverCode(cover.code)
     setCoverName(cover.name)
+    setCoverAbbreviation(cover.abbreviation ?? "")
     setCoverIsActive(cover.isActive)
     setCoverDialogOpen(true)
   }
@@ -222,6 +225,7 @@ export function CobCoverTab({
           cobId: parentCobId,
           code: coverCode,
           name: coverName,
+          abbreviation: coverAbbreviation,
           isActive: coverIsActive,
         })
         if (!res.ok) {
@@ -236,7 +240,13 @@ export function CobCoverTab({
                   ...c,
                   coverTypes: c.coverTypes.map((ct) =>
                     ct.id === editingCover.id
-                      ? { ...ct, code: coverCode, name: coverName, isActive: coverIsActive }
+                      ? {
+                          ...ct,
+                          code: coverCode,
+                          name: coverName,
+                          abbreviation: res.data?.abbreviation ?? null,
+                          isActive: coverIsActive,
+                        }
                       : ct
                   ),
                 }
@@ -248,6 +258,7 @@ export function CobCoverTab({
           cobId: parentCobId,
           code: coverCode,
           name: coverName,
+          abbreviation: coverAbbreviation,
           isActive: coverIsActive,
         })
         if (!res.ok || !res.data) {
@@ -532,6 +543,14 @@ export function CobCoverTab({
                                       </span>
                                       <span>—</span>
                                       <span className="text-foreground">{ct.name}</span>
+                                      {ct.abbreviation ? (
+                                        <span
+                                          className="rounded-md bg-muted px-1.5 py-0.5 font-mono text-[11px] text-muted-foreground"
+                                          title="Singkatan di nomor slip"
+                                        >
+                                          PS-{ct.abbreviation}
+                                        </span>
+                                      ) : null}
                                     </div>
                                     <div className="flex items-center gap-2">
                                       <StatusBadge status={ct.isActive ? "Active" : "Inactive"} />
@@ -721,6 +740,12 @@ export function CobCoverTab({
                 maxLength={6}
                 className="h-8.5 font-mono text-xs"
               />
+              {!editingCover ? (
+                <p className="text-[11px] text-muted-foreground">
+                  Dua digit kode COB sudah terisi. Lanjutkan dengan nomor urut,
+                  misalnya ketik 11 untuk 0311.
+                </p>
+              ) : null}
             </div>
 
             <div className="flex flex-col gap-1.5">
@@ -734,6 +759,24 @@ export function CobCoverTab({
                 onChange={(e) => setCoverName(e.target.value)}
                 className="h-8.5 text-xs"
               />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="cover-abbreviation" className="text-xs font-medium">
+                Singkatan di Nomor Slip
+              </Label>
+              <Input
+                id="cover-abbreviation"
+                placeholder="Contoh: PAR, IAR, MC"
+                value={coverAbbreviation}
+                onChange={(e) => setCoverAbbreviation(e.target.value.toUpperCase())}
+                maxLength={10}
+                className="h-8.5 font-mono text-xs"
+              />
+              <p className="text-[11px] text-muted-foreground">
+                Dipakai di nomor slip, misalnya 001/LCH-PLCMT/PS-PAR/X/2026.
+                Kosongkan bila nomor slip cukup PS tanpa singkatan.
+              </p>
             </div>
 
             <div className="flex items-center justify-between rounded-lg border p-2.5">

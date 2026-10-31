@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 
 import { PageShell } from "@/components/layout/page-header"
+import { FormOptionsBoundary } from "@/components/shared/form-options-boundary"
 import { MarketingTabs } from "@/components/marketing/marketing-tabs"
 import { todayIso } from "@/lib/date"
 import { parseRenewalCob, parseRenewalPeriod } from "@/lib/renewal"
@@ -31,15 +32,17 @@ export default async function MarketingPage({
 
   return (
     <PageShell>
-      <MarketingTabs
-        initialClients={initialClients}
-        initialSppa={initialSppa}
-        initialPolicies={initialPolicies}
-        vehicleOptions={vehicleOptions}
-        initialTab={TABS.find((t) => t === params.tab) ?? "clients"}
-        renewalPeriod={parseRenewalPeriod(params.days)}
-        renewalCob={parseRenewalCob(params.cob)}
-      />
+      <FormOptionsBoundary>
+        <MarketingTabs
+          initialClients={initialClients}
+          initialSppa={initialSppa}
+          initialPolicies={initialPolicies}
+          vehicleOptions={vehicleOptions}
+          initialTab={TABS.find((t) => t === params.tab) ?? "clients"}
+          renewalPeriod={parseRenewalPeriod(params.days)}
+          renewalCob={parseRenewalCob(params.cob)}
+        />
+      </FormOptionsBoundary>
     </PageShell>
   )
 }

@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 
 import { PageShell } from "@/components/layout/page-header"
+import { FormOptionsBoundary } from "@/components/shared/form-options-boundary"
 import { ClientDetail } from "@/components/marketing/client-detail"
 import { getClientById } from "@/lib/server/clients"
 import { listSppa } from "@/lib/server/sppa"
@@ -34,12 +35,14 @@ export default async function ClientDetailPage({
 
   return (
     <PageShell>
-      <ClientDetail
-        id={id}
-        initialClient={client}
-        initialSppa={initialSppa}
-        vehicleOptions={vehicleOptions}
-      />
+      <FormOptionsBoundary>
+        <ClientDetail
+          id={id}
+          initialClient={client}
+          initialSppa={initialSppa}
+          vehicleOptions={vehicleOptions}
+        />
+      </FormOptionsBoundary>
     </PageShell>
   )
 }

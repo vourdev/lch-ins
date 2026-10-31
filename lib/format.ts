@@ -201,24 +201,32 @@ export function maskEmail(value: string | null | undefined) {
   return `${user.slice(0, 2)}•••@${domain}`
 }
 
-const COB_CANONICAL_MAP: Record<string, ClassOfBusiness> = {
-  property: "Property",
-  "motor vehicle": "Motor Vehicle",
-  "marine cargo": "Marine Cargo",
-  engineering: "Engineering",
-  liability: "Liability",
-  "personal accident": "Personal Accident",
-  "general accident": "Personal Accident",
-  "surety bond": "Surety Bond",
-  terrorism: "Terrorism",
+/**
+ * Label lama di data contoh yang namanya berbeda di master data. Master SE OJK
+ * memakai GENERAL ACCIDENT untuk lini yang dulu ditulis Personal Accident.
+ */
+const COB_ALIASES: Record<string, ClassOfBusiness> = {
+  "personal accident": "General Accident",
 }
 
 /**
- * Normalizes Class of Business string (e.g. from database uppercase "PROPERTY")
- * to standard application Title Case ("Property").
+ * Nama COB untuk tampilan. Master data menulis nama dengan huruf besar semua
+ * ("MARINE CARGO"), aplikasi menampilkannya "Marine Cargo". Nama yang sudah
+ * ditulis campuran huruf besar-kecil dipakai apa adanya.
+ *
+ * Dulu COB di luar delapan nama bawaan jatuh ke "Property". Sekarang COB baru
+ * dari master tetap tampil dengan namanya sendiri, supaya tidak tersimpan
+ * sebagai Property tanpa disadari.
  */
 export function normalizeCob(cobStr?: string | null): ClassOfBusiness {
   if (!cobStr) return "Property"
-  const key = cobStr.trim().toLowerCase()
-  return COB_CANONICAL_MAP[key] ?? "Property"
+  const name = cobStr.trim()
+  const alias = COB_ALIASES[name.toLowerCase()]
+  if (alias) return alias
+  if (name !== name.toUpperCase()) return name
+  return name
+    .toLowerCase()
+    .replace(/(^|[^a-z])([a-z])/g, (_, before: string, letter: string) =>
+      before + letter.toUpperCase()
+    )
 }

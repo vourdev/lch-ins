@@ -1,5 +1,7 @@
 import "server-only"
 
+import { cache } from "react"
+
 import { Prisma, type SlipItemKind, type SlipStatus } from "@/lib/generated/prisma/client"
 
 import type {
@@ -16,6 +18,7 @@ import { SLIPS as MOCK_SLIPS } from "@/lib/data/slips"
 import { CLIENTS } from "@/lib/data/clients"
 import { coverCodeFor } from "@/components/underwriting/slip-model"
 import { normalizeCob } from "@/lib/format"
+import { cobLookupKeys } from "@/lib/server/cob"
 import { prisma } from "@/lib/prisma"
 import { getSppaById } from "@/lib/server/sppa"
 import { checkVehiclePair } from "@/lib/server/vehicles"
@@ -92,22 +95,14 @@ export interface ListPlacingSlipsParams {
   status?: SlipStatus | string
 }
 
-let lookupsCache: {
-  cobsByName: Map<string, { id: string; code: string; name: string }>
-  cobsByCode: Map<string, { id: string; code: string; name: string }>
-  coverTypesByName: Map<string, { id: string; code: string; name: string; cobId: string }>
-  occupationsByCode: Map<string, { id: string; code: string; name: string }>
-  constructionClasses: Map<string, string> // code -> id
-  rateLineKinds: Map<string, string> // code ('rate' | 'tpl' | 'pa') -> id
-  securityRoles: Map<string, string> // code ('leader' | 'member') -> id
-  currencies: Set<string>
-} | null = null
-
 let hasCheckedSeed = false
 
-async function getLookupsCache() {
-  if (lookupsCache) return lookupsCache
-
+/**
+ * Peta master data untuk menyimpan slip. Dibungkus `cache` supaya hanya
+ * berlaku selama satu request: COB, cover, atau mata uang yang baru ditambah
+ * di Master Data harus langsung dikenali, tanpa menunggu server restart.
+ */
+const getLookupsCache = cache(async () => {
   const [
     cobRows,
     coverTypeRows,
@@ -121,7 +116,7 @@ async function getLookupsCache() {
       select: { id: true, code: true, name: true },
     }),
     prisma.coverType.findMany({
-      select: { id: true, cobId: true, code: true, name: true },
+      select: { id: true, cobId: true, code: true, name: true, abbreviation: true },
     }),
     prisma.occupation.findMany({
       select: { id: true, code: true, name: true },
@@ -150,11 +145,13 @@ async function getLookupsCache() {
     cobsByCode.set(c.code.trim().toLowerCase(), c)
   }
 
-  const coverTypesByName = new Map<string, { id: string; code: string; name: string; cobId: string }>()
+  const coverTypesByName = new Map<
+    string,
+    { id: string; code: string; name: string; cobId: string; abbreviation: string | null }
+  >()
   for (const ct of coverTypeRows) {
     coverTypesByName.set(`${ct.cobId}:${ct.name.trim().toLowerCase()}`, ct)
     coverTypesByName.set(`${ct.cobId}:${ct.code.trim().toLowerCase()}`, ct)
-    coverTypesByName.set(ct.name.trim().toLowerCase(), ct)
   }
 
   const occupationsByCode = new Map<string, { id: string; code: string; name: string }>()
@@ -180,7 +177,7 @@ async function getLookupsCache() {
 
   const currencies = new Set<string>(currRows.map((c) => c.code))
 
-  lookupsCache = {
+  return {
     cobsByName,
     cobsByCode,
     coverTypesByName,
@@ -190,9 +187,7 @@ async function getLookupsCache() {
     securityRoles,
     currencies,
   }
-
-  return lookupsCache
-}
+})
 
 /**
  * Resolusi UUID klien berdasarkan UUID langsung atau fallback mapping ID mock / nama klien.
@@ -234,26 +229,27 @@ async function resolveClientId(clientIdOrMock: string, fallbackInsuredName?: str
  */
 async function resolveCob(cobNameOrCode: string) {
   const cache = await getLookupsCache()
-  const norm = normalizeCob(cobNameOrCode as CobType).trim().toLowerCase()
-  const byName = cache.cobsByName.get(norm)
-  if (byName) return byName
-  const byCode = cache.cobsByCode.get(norm)
-  if (byCode) return byCode
-
-  const first = cache.cobsByName.values().next().value
-  if (first) return first
-  throw new Error(`Class of business "${cobNameOrCode}" tidak valid.`)
+  for (const key of cobLookupKeys(cobNameOrCode)) {
+    const hit = cache.cobsByName.get(key) ?? cache.cobsByCode.get(key)
+    if (hit) return hit
+  }
+  // Dulu jatuh ke COB pertama, sehingga slip COB yang tidak dikenal diam-diam
+  // tersimpan sebagai PROPERTY. Lebih baik ditolak dengan pesan yang jelas.
+  throw new Error(
+    `Class of business "${cobNameOrCode}" tidak ada di master data.`
+  )
 }
 
 /**
- * Resolusi UUID Cover Type.
+ * Cover type master untuk type of cover slip, hanya di dalam COB yang sama.
+ * Label lama yang tidak ada di master (misalnya "PAR + EQVET") tidak punya
+ * padanan dan tetap disimpan sebagai teks saja.
  */
 async function resolveCoverType(cobId: string, typeOfCover?: string | null) {
   if (!typeOfCover || !typeOfCover.trim()) return null
   const cache = await getLookupsCache()
   const key = `${cobId}:${typeOfCover.trim().toLowerCase()}`
-  const matched = cache.coverTypesByName.get(key) || cache.coverTypesByName.get(typeOfCover.trim().toLowerCase())
-  return matched ?? null
+  return cache.coverTypesByName.get(key) ?? null
 }
 
 /**
@@ -287,7 +283,7 @@ type PrismaPlacingSlipWithRelations = Prisma.PlacingSlipGetPayload<{
   include: {
     client: { select: { id: true; name: true } }
     cob: { select: { id: true; code: true; name: true } }
-    coverType: { select: { id: true; code: true; name: true } }
+    coverType: { select: { id: true; code: true; name: true; abbreviation: true } }
     occupation: { select: { id: true; code: true; name: true } }
     constructionClass: { select: { id: true; code: true; name: true } }
     currency: { select: { code: true } }
@@ -458,7 +454,11 @@ function toPlacingSlipRecord(raw: PrismaPlacingSlipWithRelations): PlacingSlipRe
     seq,
     cob: normCob,
     typeOfCover: raw.typeOfCover || raw.coverType?.name || "",
-    coverCode: coverCodeFor(normCob, raw.typeOfCover || raw.coverType?.name || ""),
+    // Singkatan cover dari master didahulukan; slip lama tanpa cover type
+    // memakai kode bawaan dari label type of cover.
+    coverCode:
+      raw.coverType?.abbreviation ||
+      coverCodeFor(normCob, raw.typeOfCover || raw.coverType?.name || ""),
     clientId: raw.clientId,
     sppaId: raw.sppaId,
     insuredName: raw.insuredName,
@@ -562,7 +562,7 @@ export async function listPlacingSlips(
     include: {
       client: { select: { id: true, name: true } },
       cob: { select: { id: true, code: true, name: true } },
-      coverType: { select: { id: true, code: true, name: true } },
+      coverType: { select: { id: true, code: true, name: true, abbreviation: true } },
       occupation: { select: { id: true, code: true, name: true } },
       constructionClass: { select: { id: true, code: true, name: true } },
       currency: { select: { code: true } },
@@ -614,7 +614,7 @@ export async function getPlacingSlipById(id: string): Promise<PlacingSlipRecord 
     include: {
       client: { select: { id: true, name: true } },
       cob: { select: { id: true, code: true, name: true } },
-      coverType: { select: { id: true, code: true, name: true } },
+      coverType: { select: { id: true, code: true, name: true, abbreviation: true } },
       occupation: { select: { id: true, code: true, name: true } },
       constructionClass: { select: { id: true, code: true, name: true } },
       currency: { select: { code: true } },
@@ -652,7 +652,7 @@ export async function getPlacingSlipById(id: string): Promise<PlacingSlipRecord 
         include: {
           client: { select: { id: true, name: true } },
           cob: { select: { id: true, code: true, name: true } },
-          coverType: { select: { id: true, code: true, name: true } },
+          coverType: { select: { id: true, code: true, name: true, abbreviation: true } },
           occupation: { select: { id: true, code: true, name: true } },
           constructionClass: { select: { id: true, code: true, name: true } },
           currency: { select: { code: true } },
@@ -1463,10 +1463,12 @@ export async function releasePlacingSlip(
     // Generate nomor slip dokumen jika belum ada
     let slipNo = existing.slipNo
     if (!slipNo) {
-      const coverCode = coverCodeFor(
-        normalizeCob(existing.cob.name as CobType),
-        existing.typeOfCover || existing.coverType?.name || ""
-      )
+      const coverCode =
+        existing.coverType?.abbreviation ||
+        coverCodeFor(
+          normalizeCob(existing.cob.name as CobType),
+          existing.typeOfCover || existing.coverType?.name || ""
+        )
       slipNo = await nextDocumentNumber(tx, { code: "PS", coverCode })
     }
 

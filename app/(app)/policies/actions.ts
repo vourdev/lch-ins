@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache"
 import { unstable_rethrow } from "next/navigation"
 import { z } from "zod"
 
-import { CLASSES_OF_BUSINESS, POLICY_TYPES } from "@/lib/data/reference"
+import { POLICY_TYPES } from "@/lib/data/reference"
 import { Prisma } from "@/lib/generated/prisma/client"
 import {
   createPolicy,
@@ -39,7 +39,8 @@ const policyInputSchema = z
         role: z.enum(["As Leader", "As Member"]),
       })
     ),
-    cob: z.enum(CLASSES_OF_BUSINESS),
+    // Daftar COB ada di master data; server menolak nama yang tidak ada di sana.
+    cob: z.string().trim().min(1, "Class of business wajib dipilih"),
     typeOfCover: z.string().optional(),
     inceptionDate: isoDate,
     expiryDate: isoDate,

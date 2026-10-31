@@ -1,4 +1,5 @@
 import { PageShell } from "@/components/layout/page-header"
+import { FormOptionsBoundary } from "@/components/shared/form-options-boundary"
 import { PolicyDatabase } from "@/components/policies/policy-database"
 import { listClientOptions } from "@/lib/server/clients"
 import { listPolicies, listPolicyFormOptions } from "@/lib/server/policies"
@@ -17,11 +18,13 @@ export default async function PoliciesPage() {
 
   return (
     <PageShell>
-      <PolicyDatabase
-        initialPolicies={policies}
-        clientOptions={clientOptions}
-        formOptions={formOptions}
-      />
+      <FormOptionsBoundary>
+        <PolicyDatabase
+          initialPolicies={policies}
+          clientOptions={clientOptions}
+          formOptions={formOptions}
+        />
+      </FormOptionsBoundary>
     </PageShell>
   )
 }

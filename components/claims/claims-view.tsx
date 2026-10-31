@@ -34,11 +34,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { useCobFilterItems } from "@/components/shared/form-options-provider"
 import { toIdr } from "@/lib/calc"
 import {
   CLAIM_STAGES,
   CLAIM_STATUSES,
-  CLASSES_OF_BUSINESS,
   isOpenClaim,
 } from "@/lib/data"
 import type { ExportSpec } from "@/lib/export"
@@ -56,17 +56,13 @@ const STAGE_ITEMS = [
   ...CLAIM_STAGES.map((s) => ({ label: s, value: s })),
 ]
 
-const COB_ITEMS = [
-  { label: "Semua COB", value: "all" },
-  ...CLASSES_OF_BUSINESS.map((c) => ({ label: c, value: c })),
-]
-
 export interface ClaimsViewProps {
   initialClaims: ClaimRecord[]
   formOptions: ClaimFormOptions
 }
 
 export function ClaimsView({ initialClaims, formOptions }: ClaimsViewProps) {
+  const cobItems = useCobFilterItems()
   const [items, setItems] = React.useState<ClaimRecord[]>(initialClaims)
   const [prevInitial, setPrevInitial] = React.useState(initialClaims)
   if (prevInitial !== initialClaims) {
@@ -233,7 +229,7 @@ export function ClaimsView({ initialClaims, formOptions }: ClaimsViewProps) {
             className="w-full sm:w-64"
           />
           <Select
-            items={COB_ITEMS}
+            items={cobItems}
             value={cob}
             onValueChange={(v) => setCob(v as string)}
           >
@@ -242,7 +238,7 @@ export function ClaimsView({ initialClaims, formOptions }: ClaimsViewProps) {
             </SelectTrigger>
             <SelectContent>
               <SelectGroup>
-                {COB_ITEMS.map((i) => (
+                {cobItems.map((i) => (
                   <SelectItem key={i.value} value={i.value}>
                     {i.label}
                   </SelectItem>

@@ -6,8 +6,10 @@ import { toast } from "sonner"
 
 import {
   createBankAccountAction,
+  createCurrencyAction,
   createWordingFormAction,
   toggleBankAccountStatusAction,
+  toggleCurrencyStatusAction,
   toggleWordingFormStatusAction,
   updateBankAccountAction,
 } from "@/app/(app)/master-data/actions"
@@ -64,7 +66,7 @@ export function FinanceDocsTab({
   const canManage = permission.canManage("/master-data")
   const [subTab, setSubTab] = React.useState<"banks" | "currencies" | "wordings">("banks")
   const [bankAccounts, setBankAccounts] = React.useState<BankAccountRecord[]>(initialBankAccounts)
-  const [currencies] = React.useState<Currency[]>(initialCurrencies)
+  const [currencies, setCurrencies] = React.useState<Currency[]>(initialCurrencies)
   const [wordingForms, setWordingForms] = React.useState<WordingForm[]>(initialWordingForms)
   const [isPending, startTransition] = React.useTransition()
 
@@ -81,6 +83,17 @@ export function FinanceDocsTab({
   // Modal Wording State
   const [wordingDialogOpen, setWordingDialogOpen] = React.useState(false)
   const [wordingName, setWordingName] = React.useState("")
+
+  // Modal Mata Uang State
+  const [currencyDialogOpen, setCurrencyDialogOpen] = React.useState(false)
+  const [newCurrencyCode, setNewCurrencyCode] = React.useState("")
+  const [newCurrencyName, setNewCurrencyName] = React.useState("")
+
+  const [prevCurrencies, setPrevCurrencies] = React.useState(initialCurrencies)
+  if (prevCurrencies !== initialCurrencies) {
+    setPrevCurrencies(initialCurrencies)
+    setCurrencies(initialCurrencies)
+  }
 
   const [prevBankAccounts, setPrevBankAccounts] = React.useState(initialBankAccounts)
   if (prevBankAccounts !== initialBankAccounts) {
@@ -200,6 +213,45 @@ export function FinanceDocsTab({
     })
   }
 
+  function handleSaveCurrency() {
+    if (!newCurrencyCode.trim() || !newCurrencyName.trim()) {
+      toast.error("Kode dan nama mata uang wajib diisi")
+      return
+    }
+
+    startTransition(async () => {
+      const res = await createCurrencyAction({
+        code: newCurrencyCode,
+        name: newCurrencyName,
+      })
+      if (!res.ok || !res.data) {
+        toast.error(res.error)
+        return
+      }
+      const created = res.data
+      toast.success(`Mata uang ${created.code} berhasil ditambahkan`)
+      setCurrencies((prev) =>
+        [...prev, created].sort((a, b) => a.code.localeCompare(b.code))
+      )
+      setCurrencyDialogOpen(false)
+    })
+  }
+
+  function handleToggleCurrency(code: string, current: boolean) {
+    const next = !current
+    startTransition(async () => {
+      const res = await toggleCurrencyStatusAction(code, next)
+      if (!res.ok) {
+        toast.error(res.error)
+        return
+      }
+      setCurrencies((prev) =>
+        prev.map((c) => (c.code === code ? { ...c, isActive: next } : c))
+      )
+      toast.success(next ? `${code} diaktifkan` : `${code} dinonaktifkan`)
+    })
+  }
+
   function handleToggleWording(id: string, current: boolean) {
     const next = !current
     startTransition(async () => {
@@ -240,6 +292,21 @@ export function FinanceDocsTab({
           <Button size="sm" onClick={openAddBank} className="h-9 gap-1.5 text-xs">
             <Plus className="size-4" />
             Tambah Rekening Bank
+          </Button>
+        )}
+
+        {subTab === "currencies" && canManage && (
+          <Button
+            size="sm"
+            onClick={() => {
+              setNewCurrencyCode("")
+              setNewCurrencyName("")
+              setCurrencyDialogOpen(true)
+            }}
+            className="h-9 gap-1.5 text-xs"
+          >
+            <Plus className="size-4" />
+            Tambah Mata Uang
           </Button>
         )}
 
@@ -332,6 +399,7 @@ export function FinanceDocsTab({
                 <TableHead className="w-28">Kode ISO</TableHead>
                 <TableHead>Nama Mata Uang</TableHead>
                 <TableHead className="w-28">Status</TableHead>
+                {canManage && <TableHead className="w-24 text-right pr-4">Aksi</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -344,6 +412,19 @@ export function FinanceDocsTab({
                   <TableCell>
                     <StatusBadge status={curr.isActive ? "Active" : "Inactive"} />
                   </TableCell>
+                  {canManage && (
+                    <TableCell className="text-right pr-4">
+                      <div className="flex items-center justify-end">
+                        <Switch
+                          checked={curr.isActive}
+                          onCheckedChange={() => handleToggleCurrency(curr.code, curr.isActive)}
+                          disabled={isPending}
+                          className="scale-75"
+                          title={curr.isActive ? `Nonaktifkan ${curr.code}` : `Aktifkan ${curr.code}`}
+                        />
+                      </div>
+                    </TableCell>
+                  )}
                 </TableRow>
               ))}
             </TableBody>
@@ -467,7 +548,9 @@ export function FinanceDocsTab({
                   <SelectValue placeholder="Pilih valuta" />
                 </SelectTrigger>
                 <SelectContent>
-                  {currencies.map((c) => (
+                  {currencies
+                    .filter((c) => c.isActive || c.code === currencyCode)
+                    .map((c) => (
                     <SelectItem key={c.code} value={c.code} className="text-xs">
                       {c.code} — {c.name}
                     </SelectItem>
@@ -516,6 +599,68 @@ export function FinanceDocsTab({
       </Dialog>
 
       {/* Dialog Wording Form */}
+      {/* Dialog Mata Uang */}
+      <Dialog open={currencyDialogOpen} onOpenChange={setCurrencyDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Tambah Mata Uang</DialogTitle>
+            <DialogDescription className="text-xs">
+              Kode ISO 4217 tiga huruf menjadi kunci dan tidak bisa diubah.
+              Mata uang yang tidak dipakai lagi cukup dinonaktifkan.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex flex-col gap-3 py-2 text-xs">
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="currency-code" className="text-xs font-medium">
+                Kode ISO <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="currency-code"
+                placeholder="Contoh: JPY"
+                value={newCurrencyCode}
+                onChange={(e) => setNewCurrencyCode(e.target.value.toUpperCase())}
+                maxLength={3}
+                className="h-8.5 font-mono text-xs"
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="currency-name" className="text-xs font-medium">
+                Nama Mata Uang <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="currency-name"
+                placeholder="Contoh: Japanese Yen"
+                value={newCurrencyName}
+                onChange={(e) => setNewCurrencyName(e.target.value)}
+                className="h-8.5 text-xs"
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrencyDialogOpen(false)}
+              className="text-xs"
+            >
+              Batal
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              onClick={handleSaveCurrency}
+              disabled={isPending}
+              className="text-xs"
+            >
+              Simpan Mata Uang
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={wordingDialogOpen} onOpenChange={setWordingDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>

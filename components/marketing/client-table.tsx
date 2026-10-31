@@ -36,8 +36,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { useCobFilterItems } from "@/components/shared/form-options-provider"
 import {
-  CLASSES_OF_BUSINESS,
   CLIENT_STATUSES,
   kycMissing,
   type Client,
@@ -46,10 +46,6 @@ import type { ExportSpec } from "@/lib/export"
 import { maskEmail, maskMiddle } from "@/lib/format"
 import { store, useCollection } from "@/lib/store"
 
-const COB_ITEMS = [
-  { label: "Semua COB", value: "all" },
-  ...CLASSES_OF_BUSINESS.map((c) => ({ label: c, value: c })),
-]
 const STATUS_ITEMS = [
   { label: "Semua status", value: "all" },
   ...CLIENT_STATUSES.map((s) => ({ label: s, value: s })),
@@ -65,6 +61,7 @@ interface ClientTableProps {
 }
 
 export function ClientTable({ onEdit, initialClients }: ClientTableProps) {
+  const cobItems = useCobFilterItems()
   React.useEffect(() => {
     if (initialClients && initialClients.length > 0) {
       store.hydrate("clients", initialClients)
@@ -206,7 +203,7 @@ export function ClientTable({ onEdit, initialClients }: ClientTableProps) {
           placeholder="Cari nama klien, kontak, email, nomor telepon, NPWP…"
         />
         <Select
-          items={COB_ITEMS}
+          items={cobItems}
           value={cob}
           onValueChange={(v) => setCob(v as string)}
         >
@@ -215,7 +212,7 @@ export function ClientTable({ onEdit, initialClients }: ClientTableProps) {
           </SelectTrigger>
           <SelectContent>
             <SelectGroup>
-              {COB_ITEMS.map((i) => (
+              {cobItems.map((i) => (
                 <SelectItem key={i.value} value={i.value}>
                   {i.label}
                 </SelectItem>

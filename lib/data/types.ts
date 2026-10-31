@@ -1,4 +1,5 @@
-export type ClassOfBusiness =
+/** Nama COB yang dipakai data contoh dan logika khusus (Property, Motor Vehicle). */
+export type KnownClassOfBusiness =
   | "Property"
   | "Motor Vehicle"
   | "Marine Cargo"
@@ -7,6 +8,12 @@ export type ClassOfBusiness =
   | "Personal Accident"
   | "Surety Bond"
   | "Terrorism"
+
+/**
+ * Class of business. Daftar pilihannya dari master data, jadi COB baru yang
+ * ditambah LCH juga sah; tipe ini tetap menyarankan nama yang dikenal.
+ */
+export type ClassOfBusiness = KnownClassOfBusiness | (string & {})
 
 /** Cancelled dipakai untuk slip bernomor yang dibatalkan, supaya nomor tidak bolong. */
 export type SlipStatus =

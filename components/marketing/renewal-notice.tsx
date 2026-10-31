@@ -31,8 +31,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { useCobFilterItems } from "@/components/shared/form-options-provider"
 import {
-  CLASSES_OF_BUSINESS,
   policyStatus,
   premiumIdr,
   type Policy,
@@ -52,11 +52,6 @@ const PERIOD_ITEMS = RENEWAL_PERIODS.map((d) => ({
   label: `${d} hari`,
   value: d,
 }))
-const COB_ITEMS = [
-  { label: "Semua COB", value: "all" },
-  ...CLASSES_OF_BUSINESS.map((c) => ({ label: c, value: c })),
-]
-
 export function RenewalNotice({
   initialPolicies,
   initialPeriod = DEFAULT_RENEWAL_PERIOD,
@@ -66,6 +61,7 @@ export function RenewalNotice({
   initialPeriod?: string
   initialCob?: string
 }) {
+  const cobItems = useCobFilterItems()
   const today = useToday()
   const sessionPolicies = useCollection("policies")
   // Store baru berisi data database setelah Policy Database dibuka, jadi data server didahulukan.
@@ -137,7 +133,7 @@ export function RenewalNotice({
         <Field className="w-45">
           <FieldLabel>Class of Business</FieldLabel>
           <Select
-            items={COB_ITEMS}
+            items={cobItems}
             value={cob}
             onValueChange={(v) => setCob(v as string)}
           >
@@ -146,7 +142,7 @@ export function RenewalNotice({
             </SelectTrigger>
             <SelectContent>
               <SelectGroup>
-                {COB_ITEMS.map((i) => (
+                {cobItems.map((i) => (
                   <SelectItem key={i.value} value={i.value}>
                     {i.label}
                   </SelectItem>

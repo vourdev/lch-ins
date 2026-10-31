@@ -3,6 +3,7 @@ import Link from "next/link"
 import { FilePlus2 } from "lucide-react"
 
 import { PageHeader, PageShell } from "@/components/layout/page-header"
+import { FormOptionsBoundary } from "@/components/shared/form-options-boundary"
 import { SlipTable } from "@/components/underwriting/slip-table"
 import { Button } from "@/components/ui/button"
 import { canManage } from "@/lib/access"
@@ -38,7 +39,9 @@ export default async function UnderwritingPage() {
           ) : null
         }
       />
-      <SlipTable initialSlips={initialSlips} />
+      <FormOptionsBoundary>
+        <SlipTable initialSlips={initialSlips} />
+      </FormOptionsBoundary>
     </PageShell>
   )
 }

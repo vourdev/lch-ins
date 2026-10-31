@@ -7,6 +7,7 @@ import * as z from "zod"
 
 import { createPolicyAction, updatePolicyAction } from "@/app/(app)/policies/actions"
 import { FormDrawer } from "@/components/shared/form-drawer"
+import { useFormOptions } from "@/components/shared/form-options-provider"
 import {
   NumberField,
   SearchSelect,
@@ -23,16 +24,15 @@ import {
   totalSumInsured,
 } from "@/lib/calc"
 import {
-  CLASSES_OF_BUSINESS,
   POLICY_TYPES,
   POLICY_TYPES_WITH_PARENT,
-  TYPE_OF_COVER,
   type ClassOfBusiness,
   type Policy,
   type PolicyFile,
   type PolicyType,
 } from "@/lib/data"
 import { addMonths, todayIso } from "@/lib/date"
+import { cobLabels, coversFor } from "@/lib/form-options"
 import { dateShort, money } from "@/lib/format"
 import type { ClientOption } from "@/lib/server/clients"
 import type { PolicyFormOptions, PolicyInput } from "@/lib/server/policies"
@@ -177,7 +177,20 @@ export function PolicyForm({
       value: s.id,
     }))
   const needsParent = POLICY_TYPES_WITH_PARENT.includes(draft.type)
-  const coverItems = (TYPE_OF_COVER[draft.cob] ?? []).map((t) => t.label)
+  // COB dan type of cover dari master data. Nilai polis lama yang sudah tidak
+  // ada di master tetap tampil supaya tidak hilang saat diedit.
+  const masterOptions = useFormOptions()
+  const cobItems = withCurrent(
+    cobLabels(masterOptions).map((c) => ({ label: c, value: c })),
+    draft.cob
+  ).map((i) => i.value)
+  const coverItems = withCurrent(
+    coversFor(masterOptions, draft.cob).map((c) => ({
+      label: c.name,
+      value: c.name,
+    })),
+    draft.typeOfCover
+  ).map((i) => i.value)
   const brokerageCap = brokerageCapFor(draft.cob)
   const insurerItems = withCurrent(
     formOptions.insurers.map((name) => ({ label: name, value: name })),
@@ -440,7 +453,7 @@ export function PolicyForm({
           <SelectInput
             label="Class of Business"
             required
-            items={CLASSES_OF_BUSINESS}
+            items={cobItems}
             value={draft.cob}
             onValueChange={(v) =>
               set({ cob: v as ClassOfBusiness, typeOfCover: "" })

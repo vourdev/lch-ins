@@ -17,6 +17,7 @@ import {
 import { toast } from "sonner"
 
 import { PageShell } from "@/components/layout/page-header"
+import { useFormOptions } from "@/components/shared/form-options-provider"
 import { SectionCard } from "@/components/shared/section-card"
 import {
   SlipFormActions,
@@ -48,7 +49,8 @@ import {
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 import { sumPercent, totalPremium, totalSumInsured } from "@/lib/calc"
-import { INSURERS, type PlacingSlip, type SecurityPanelRow } from "@/lib/data"
+import type { PlacingSlip, SecurityPanelRow } from "@/lib/data"
+import { withCurrent } from "@/lib/form-options"
 import { money, num } from "@/lib/format"
 import { newId, store, useRecord } from "@/lib/store"
 
@@ -56,7 +58,6 @@ const ROLE_ITEMS = [
   { label: "As Leader", value: "As Leader" },
   { label: "As Member", value: "As Member" },
 ]
-const INSURER_ITEMS = INSURERS.map((i) => ({ label: i, value: i }))
 
 const SECTION_KEYS = [
   "subjectivity",
@@ -124,6 +125,7 @@ export function QuotationDraftForm({
 function QuotationEditor({ slip }: { slip: PlacingSlip }) {
   const router = useRouter()
   const today = useToday()
+  const insurerNames = useFormOptions().insurers.map((i) => i.name)
   const [subjectivity, setSubjectivity] = React.useState(
     slip.subjectivity ?? ""
   )
@@ -304,7 +306,13 @@ function QuotationEditor({ slip }: { slip: PlacingSlip }) {
                 <span />
               </div>
 
-              {panel.map((row, index) => (
+              {panel.map((row, index) => {
+                // Asuransi yang sudah dinonaktifkan di master tetap tampil di
+                // panel lama supaya isiannya tidak hilang.
+                const insurerItems = withCurrent(insurerNames, row.insurer).map(
+                  (i) => ({ label: i, value: i })
+                )
+                return (
                 <div
                   key={row.id}
                   className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] gap-3 rounded-lg border p-3 lg:grid-cols-[minmax(0,1fr)_120px_150px_40px] lg:border-0 lg:p-0"
@@ -312,7 +320,7 @@ function QuotationEditor({ slip }: { slip: PlacingSlip }) {
                   <Select
                     items={[
                       { label: `Panel ${index + 1}`, value: null },
-                      ...INSURER_ITEMS,
+                      ...insurerItems,
                     ]}
                     value={row.insurer || null}
                     onValueChange={(v) =>
@@ -330,7 +338,7 @@ function QuotationEditor({ slip }: { slip: PlacingSlip }) {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectGroup>
-                        {INSURER_ITEMS.map((i) => (
+                        {insurerItems.map((i) => (
                           <SelectItem key={i.value} value={i.value}>
                             {i.label}
                           </SelectItem>
@@ -389,7 +397,8 @@ function QuotationEditor({ slip }: { slip: PlacingSlip }) {
                     <Trash2 />
                   </Button>
                 </div>
-              ))}
+                )
+              })}
 
               <div className="flex flex-wrap items-center gap-3">
                 <Button

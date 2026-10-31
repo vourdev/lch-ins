@@ -1,4 +1,4 @@
-import { CLASSES_OF_BUSINESS, type Policy } from "@/lib/data"
+import type { Policy } from "@/lib/data"
 import { daysBetween } from "@/lib/date"
 
 export const RENEWAL_PERIODS = ["30", "60", "90", "180"] as const
@@ -10,8 +10,13 @@ export function parseRenewalPeriod(value: string | undefined) {
   return RENEWAL_PERIODS.find((p) => p === value) ?? DEFAULT_RENEWAL_PERIOD
 }
 
+/**
+ * COB dari URL. Daftar COB ada di master data, jadi nilainya tidak dicocokkan
+ * dengan daftar tetap; nilai yang tidak dikenal cukup menghasilkan tabel kosong.
+ */
 export function parseRenewalCob(value: string | undefined) {
-  return CLASSES_OF_BUSINESS.find((c) => c === value) ?? "all"
+  const cob = value?.trim()
+  return cob ? cob.slice(0, 80) : "all"
 }
 
 /** Query filter yang dibawa bolak-balik antara layar Renewal Notice dan halaman cetak. */

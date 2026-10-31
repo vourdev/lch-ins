@@ -15,6 +15,7 @@ export const ENTITY_LABELS: Record<string, string> = {
   classes_of_business: "Class of Business",
   cob_ojk_classes: "Klasifikasi OJK",
   cover_types: "Type of Cover",
+  currencies: "Mata Uang",
   insurers: "Asuransi",
   lookup_values: "Nilai Pilihan",
   wording_forms: "Wording",
@@ -33,6 +34,7 @@ export const ACTION_LABELS: Record<string, string> = {
 const FIELD_LABELS: Record<string, string> = {
   name: "Nama",
   code: "Kode",
+  abbreviation: "Singkatan",
   email: "Email",
   jobTitle: "Jabatan",
   roles: "Peran",

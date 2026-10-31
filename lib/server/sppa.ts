@@ -1,5 +1,7 @@
 import "server-only"
 
+import { cache } from "react"
+
 import { Prisma, type SppaStatus as PrismaSppaStatus } from "@/lib/generated/prisma/client"
 
 import type {
@@ -11,6 +13,7 @@ import { SPPA as MOCK_SPPA } from "@/lib/data/sppa"
 import { CLIENTS } from "@/lib/data/clients"
 import { normalizeCob } from "@/lib/format"
 import { prisma } from "@/lib/prisma"
+import { cobLookupKeys } from "@/lib/server/cob"
 import { checkVehiclePair } from "@/lib/server/vehicles"
 import { recordAudit } from "@/server/services/audit"
 
@@ -55,19 +58,13 @@ export interface ListSppaParams {
   status?: SppaStatus | string
 }
 
-let lookupsCache: {
-  cobsByName: Map<string, { id: string; code: string; name: string }>
-  cobsByCode: Map<string, { id: string; code: string; name: string }>
-  coverTypesByName: Map<string, string>
-  occupationsByCode: Map<string, { id: string; name: string }>
-  currencies: Set<string>
-} | null = null
-
 let hasCheckedSeed = false
 
-async function getSppaLookupsCache() {
-  if (lookupsCache) return lookupsCache
-
+/**
+ * Peta master data untuk menyimpan SPPA, berlaku satu request saja supaya
+ * isian master yang baru ditambah langsung dikenali.
+ */
+const getSppaLookupsCache = cache(async () => {
   const [cobRows, coverTypeRows, occRows, currRows] = await Promise.all([
     prisma.classOfBusiness.findMany({
       select: { id: true, code: true, name: true },
@@ -94,7 +91,6 @@ async function getSppaLookupsCache() {
   for (const ct of coverTypeRows) {
     coverTypesByName.set(`${ct.cobId}:${ct.name.trim().toLowerCase()}`, ct.id)
     coverTypesByName.set(`${ct.cobId}:${ct.code.trim().toLowerCase()}`, ct.id)
-    coverTypesByName.set(ct.name.trim().toLowerCase(), ct.id)
   }
 
   const occupationsByCode = new Map<string, { id: string; name: string }>()
@@ -104,16 +100,16 @@ async function getSppaLookupsCache() {
 
   const currencies = new Set<string>(currRows.map((c) => c.code.toUpperCase()))
 
-  lookupsCache = {
+  return {
     cobsByName,
     cobsByCode,
     coverTypesByName,
     occupationsByCode,
     currencies,
   }
+})
 
-  return lookupsCache
-}
+type SppaLookups = Awaited<ReturnType<typeof getSppaLookupsCache>>
 
 async function resolveClientId(clientId: string): Promise<string> {
   const trimmed = clientId.trim()
@@ -148,34 +144,31 @@ async function resolveClientId(clientId: string): Promise<string> {
 }
 
 function resolveCobId(
-  cache: NonNullable<typeof lookupsCache>,
+  cache: SppaLookups,
   cobStr: string
 ): { id: string; name: string } {
-  const norm = cobStr.trim().toLowerCase()
-  const found = cache.cobsByName.get(norm) || cache.cobsByCode.get(norm)
-  if (found) return found
-
-  const first = cache.cobsByName.values().next().value
-  if (!first) throw new Error("Class of Business belum terdaftar di database.")
-  return first
+  for (const key of cobLookupKeys(cobStr)) {
+    const found = cache.cobsByName.get(key) ?? cache.cobsByCode.get(key)
+    if (found) return found
+  }
+  // Dulu jatuh ke COB pertama; SPPA dengan COB yang tidak dikenal lebih baik
+  // ditolak daripada tersimpan dengan COB yang salah.
+  throw new Error(`Class of business "${cobStr}" tidak ada di master data.`)
 }
 
 function resolveCoverTypeId(
-  cache: NonNullable<typeof lookupsCache>,
+  cache: SppaLookups,
   cobId: string,
   typeOfCover: string
 ): string | null {
   if (!typeOfCover || !typeOfCover.trim()) return null
   const norm = typeOfCover.trim().toLowerCase()
-  return (
-    cache.coverTypesByName.get(`${cobId}:${norm}`) ||
-    cache.coverTypesByName.get(norm) ||
-    null
-  )
+  // Hanya cover type milik COB yang sama; label lama tanpa padanan tetap teks.
+  return cache.coverTypesByName.get(`${cobId}:${norm}`) ?? null
 }
 
 function resolveOccupationId(
-  cache: NonNullable<typeof lookupsCache>,
+  cache: SppaLookups,
   occupationStr?: string | null
 ): string | null {
   if (!occupationStr || !occupationStr.trim()) return null

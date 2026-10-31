@@ -11,18 +11,13 @@ import {
 } from "@/app/(app)/marketing/actions"
 import { FormDrawer } from "@/components/shared/form-drawer"
 import { SelectInput, TextField } from "@/components/shared/form-fields"
+import { useFormOptions } from "@/components/shared/form-options-provider"
 import { Button } from "@/components/ui/button"
 import { FieldGroup, FieldSeparator } from "@/components/ui/field"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import {
-  ADDRESS_TYPES,
-  CLASSES_OF_BUSINESS,
-  CLIENT_DOCUMENT_TYPES,
   CLIENT_STATUSES,
   CLIENT_TYPES,
-  ID_TYPES,
-  INCOME_SOURCES,
-  INSURANCE_PURPOSES,
   type ClassOfBusiness,
   type Client,
   type ClientAddress,
@@ -31,6 +26,11 @@ import {
   type ClientType,
 } from "@/lib/data"
 import { todayIso } from "@/lib/date"
+import {
+  cobLabels,
+  withCurrent,
+  type FormOptions,
+} from "@/lib/form-options"
 import { newId, store } from "@/lib/store"
 import {
   email,
@@ -46,13 +46,25 @@ type Draft = Omit<Client, "id" | "createdAt"> & {
   createdAt: string
 }
 
-function emptyDraft(): Draft {
+/**
+ * Nilai bawaan form. Pilihan yang diminta dipakai bila masih ada di master
+ * (tanpa membedakan huruf besar-kecil), kalau tidak pilihan pertama.
+ */
+function pick(values: string[], preferred: string) {
+  return (
+    values.find((v) => v.toLowerCase() === preferred.toLowerCase()) ??
+    values[0] ??
+    preferred
+  )
+}
+
+function emptyDraft(options: FormOptions): Draft {
   return {
     id: null,
     clientType: "Korporasi",
     name: "",
     npwp: "",
-    idType: "KTP",
+    idType: pick(options.lookups.id_type, "KTP"),
     idNumber: "",
     birthPlace: "",
     birthDate: "",
@@ -64,12 +76,12 @@ function emptyDraft(): Draft {
     insurancePurpose: "",
     insurancePurposeNote: "",
     kycDate: todayIso(),
-    cob: "Property",
+    cob: pick(cobLabels(options), "Property"),
     status: "Prospect",
     addresses: [
       {
         id: newId("a"),
-        label: "Alamat Korespondensi",
+        label: pick(options.lookups.address_type, "Alamat Korespondensi"),
         value: "",
         isPrimary: true,
       },
@@ -151,8 +163,10 @@ export function ClientForm({
   client?: Client | null
   onSaved?: (client: Client) => void
 }) {
+  const options = useFormOptions()
+  const { lookups } = options
   const [draft, setDraft] = React.useState<Draft>(() =>
-    client ? { ...client } : emptyDraft()
+    client ? { ...client } : emptyDraft(options)
   )
   const [errors, setErrors] = React.useState<FieldErrors>({})
   const set = (patch: Partial<Draft>) => setDraft((d) => ({ ...d, ...patch }))
@@ -297,7 +311,7 @@ export function ClientForm({
           <SelectInput
             label="Class of Business Utama"
             required
-            items={CLASSES_OF_BUSINESS}
+            items={withCurrent(cobLabels(options), draft.cob)}
             value={draft.cob}
             onValueChange={(v) => set({ cob: v as ClassOfBusiness })}
           />
@@ -348,7 +362,7 @@ export function ClientForm({
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <SelectInput
               label="Jenis Identitas"
-              items={ID_TYPES}
+              items={withCurrent(lookups.id_type, draft.idType)}
               value={draft.idType ?? ""}
               onValueChange={(v) => set({ idType: v })}
             />
@@ -386,7 +400,7 @@ export function ClientForm({
             />
             <SelectInput
               label="Sumber Penghasilan"
-              items={INCOME_SOURCES}
+              items={withCurrent(lookups.income_source, draft.incomeSource)}
               value={draft.incomeSource ?? ""}
               onValueChange={(v) => set({ incomeSource: v })}
             />
@@ -413,7 +427,10 @@ export function ClientForm({
           />
           <SelectInput
             label="Tujuan Menutup Asuransi"
-            items={INSURANCE_PURPOSES}
+            items={withCurrent(
+              lookups.insurance_purpose,
+              draft.insurancePurpose
+            )}
             value={draft.insurancePurpose ?? ""}
             onValueChange={(v) => set({ insurancePurpose: v })}
           />
@@ -451,7 +468,7 @@ export function ClientForm({
                 <SelectInput
                   label="Jenis Alamat"
                   required
-                  items={ADDRESS_TYPES}
+                  items={withCurrent(lookups.address_type, a.label)}
                   value={a.label}
                   onValueChange={(v) => patchAddress(a.id, { label: v })}
                   error={errors[`addresses.${i}.label`]}
@@ -514,9 +531,11 @@ export function ClientForm({
                   {
                     id: newId("a"),
                     label:
-                      ADDRESS_TYPES.find(
+                      lookups.address_type.find(
                         (t) => !draft.addresses.some((x) => x.label === t)
-                      ) ?? ADDRESS_TYPES[0],
+                      ) ??
+                      lookups.address_type[0] ??
+                      "",
                     value: "",
                   },
                 ],
@@ -538,7 +557,7 @@ export function ClientForm({
             >
               <SelectInput
                 label="Jenis Berkas"
-                items={CLIENT_DOCUMENT_TYPES}
+                items={withCurrent(lookups.client_document_type, d.type)}
                 value={d.type}
                 onValueChange={(v) => patchDocument(d.id, { type: v })}
                 error={errors[`documents.${i}.type`]}
@@ -594,9 +613,10 @@ export function ClientForm({
                   ...draft.documents,
                   {
                     id: newId("d"),
-                    type: corporate
-                      ? "Copy NPWP"
-                      : "Copy KTP, SIM, atau paspor",
+                    type: pick(
+                      lookups.client_document_type,
+                      corporate ? "Copy NPWP" : "Copy KTP, SIM, atau paspor"
+                    ),
                     fileName: "",
                     uploadedAt: todayIso(),
                   },

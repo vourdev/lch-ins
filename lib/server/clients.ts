@@ -1,5 +1,7 @@
 import "server-only"
 
+import { cache } from "react"
+
 import type {
   ClassOfBusiness as CobType,
   Client,
@@ -12,6 +14,7 @@ import { CLIENTS } from "@/lib/data/clients"
 import { normalizeCob } from "@/lib/format"
 import type { Prisma } from "@/lib/generated/prisma/client"
 import { prisma } from "@/lib/prisma"
+import { cobLookupKeys } from "@/lib/server/cob"
 import { recordAudit } from "@/server/services/audit"
 
 export interface ClientRecord extends Client {
@@ -63,23 +66,15 @@ export interface ListClientsParams {
 }
 
 /**
- * In-memory cache for mapping lookup values and COBs to database UUIDs.
- */
-let lookupsCache: {
-  byTypeAndCode: Map<string, { id: string; name: string }>
-  byTypeAndName: Map<string, { id: string; code: string }>
-  cobsByName: Map<string, string>
-  cobsByCode: Map<string, string>
-} | null = null
-
-/**
  * Runtime guard to prevent redundant `prisma.client.count()` queries on every client listing.
  */
 let hasCheckedSeed = false
 
-async function getLookupsCache() {
-  if (lookupsCache) return lookupsCache
-
+/**
+ * Peta nilai lookup dan COB ke UUID. Berlaku satu request saja: nilai baru
+ * di Master Data (misalnya tujuan asuransi) harus langsung bisa disimpan.
+ */
+const getLookupsCache = cache(async () => {
   const [lookupRows, cobRows] = await Promise.all([
     prisma.lookupValue.findMany({
       where: {
@@ -124,12 +119,13 @@ async function getLookupsCache() {
     cobsByCode.set(cob.code.toLowerCase(), cob.id)
   }
 
-  lookupsCache = { byTypeAndCode, byTypeAndName, cobsByName, cobsByCode }
-  return lookupsCache
-}
+  return { byTypeAndCode, byTypeAndName, cobsByName, cobsByCode }
+})
+
+type ClientLookups = Awaited<ReturnType<typeof getLookupsCache>>
 
 function resolveLookupId(
-  cache: NonNullable<typeof lookupsCache>,
+  cache: ClientLookups,
   type: string,
   valueOrCode: string | null | undefined
 ): string | null {
@@ -148,28 +144,17 @@ function resolveLookupId(
 }
 
 function resolveCobId(
-  cache: NonNullable<typeof lookupsCache>,
+  cache: ClientLookups,
   cobValue: string | null | undefined
 ): string | null {
   if (!cobValue || !cobValue.trim()) return null
-  const key = cobValue.trim().toLowerCase()
-
-  if (cache.cobsByName.has(key)) return cache.cobsByName.get(key)!
-  if (cache.cobsByCode.has(key)) return cache.cobsByCode.get(key)!
-
-  // Partial fallback (e.g., "Property All Risks" -> PROPERTY)
-  for (const [name, id] of cache.cobsByName.entries()) {
-    if (key.includes(name) || name.includes(key)) return id
+  for (const key of cobLookupKeys(cobValue)) {
+    const id = cache.cobsByName.get(key) ?? cache.cobsByCode.get(key)
+    if (id) return id
   }
-
-  // Fallback Personal Accident -> GENERAL ACCIDENT
-  if (key.includes("accident") || key.includes("pa")) {
-    const generalAccident = cache.cobsByName.get("general accident")
-    if (generalAccident) return generalAccident
-  }
-
-  // Default fallback to first COB
-  return cache.cobsByName.values().next().value ?? null
+  // COB klien boleh kosong. Dulu nama yang tidak cocok jatuh ke COB pertama
+  // atau dicocokkan sebagian; lebih aman dibiarkan kosong.
+  return null
 }
 
 /**
